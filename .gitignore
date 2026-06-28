@@ -42,5 +42,9 @@ venv/
 # Environment variables
 .env
 
+dashboard_prototype.html
+dashboard_prototype_BACKUP.html
+templates/dashboard_OLD_backup.html
+
 # VS Code
 .vscode/
