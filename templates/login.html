@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="color-scheme" content="light"/>
+<title>Sign in — Business Scraping Agent</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  :root{ color-scheme:light; --blue:#1A43BF; --blue-dark:#163AA3; --text:#1F2937; --text-2:#6B7280; --line:#E9EDF3; --bg:#F6F8FB; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+       min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 10px rgba(16,24,40,.06);
+        width:100%;max-width:380px;padding:32px 30px;}
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:22px;}
+  .brand-mark{width:38px;height:38px;border-radius:9px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .brand-name{font-size:15px;font-weight:700;line-height:1.2;}
+  .brand-sub{font-size:11px;color:var(--text-2);}
+  h1{font-size:18px;font-weight:700;margin-bottom:4px;}
+  .sub{font-size:13px;color:var(--text-2);margin-bottom:20px;}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;}
+  .inp{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);margin-bottom:15px;}
+  .inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,67,191,.12);}
+  .btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover{background:var(--blue-dark);}
+  .err{background:#FBE9E9;color:#C62828;border:1px solid #f3c9c9;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
+  .note{background:#E8EEF7;color:#1A43BF;border:1px solid #d6e0ee;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
+  .foot{font-size:11px;color:var(--text-2);text-align:center;margin-top:18px;}
+</style>
+</head>
+<body>
+  <form class="card" method="POST" action="/login">
+    <div class="brand">
+      <div class="brand-mark"><i class="fa-solid fa-building-columns"></i></div>
+      <div>
+        <div class="brand-name">Business Scraping Agent</div>
+        <div class="brand-sub">URA Investigation System</div>
+      </div>
+    </div>
+
+    {% if needs_setup %}
+      <h1>Create the first account</h1>
+      <div class="sub">No accounts exist yet. Set up the first login to secure the app.</div>
+      <div class="note"><i class="fa-solid fa-circle-info"></i> Choose a username and a strong password — you'll use these to sign in.</div>
+    {% else %}
+      <h1>Sign in</h1>
+      <div class="sub">Enter your credentials to access the system.</div>
+    {% endif %}
+
+    {% if error %}<div class="err"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
+
+    <label for="username">Username</label>
+    <input class="inp" id="username" name="username" autocomplete="username" autofocus required/>
+
+    <label for="password">Password</label>
+    <input class="inp" id="password" name="password" type="password" autocomplete="current-password" required/>
+
+    <button class="btn" type="submit">
+      {% if needs_setup %}<i class="fa-solid fa-user-plus"></i> Create account &amp; sign in{% else %}<i class="fa-solid fa-right-to-bracket"></i> Sign in{% endif %}
+    </button>
+
+    <div class="foot">Uganda Revenue Authority · Internal use only</div>
+  </form>
+</body>
+</html>

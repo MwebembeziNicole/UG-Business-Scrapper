@@ -252,9 +252,10 @@
       <button class="icon-btn" id="themeToggle" title="Toggle light / dark mode" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i></button>
       <button class="icon-btn" title="Refresh" onclick="refreshAll()"><i class="fa-solid fa-rotate-right"></i></button>
       <div class="user-chip">
-        <div class="user-av">NM</div>
-        <div><div class="user-name">N. Mwebembezi</div><div class="user-role">Tax Investigator</div></div>
+        <div class="user-av">{{ initials }}</div>
+        <div><div class="user-name">{{ username }}</div><div class="user-role">Investigator</div></div>
       </div>
+      <button class="icon-btn" title="Log out" onclick="window.location.href='/logout'"><i class="fa-solid fa-right-from-bracket"></i></button>
     </div>
   </div>
 

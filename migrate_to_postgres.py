@@ -110,6 +110,23 @@ def migrate_queue(s, conn, pcur, table, conflict_col):
     return n
 
 
+def migrate_users(s, conn, pcur):
+    sc = s.cursor()
+    if not _table_exists(sc, "users"):
+        return 0
+    rows = sc.execute("SELECT username, password_hash, created_at FROM users").fetchall()
+    for r in rows:
+        d = dict(r)
+        pcur.execute(
+            """INSERT INTO users (username, password_hash, created_at)
+               VALUES (%s, %s, %s) ON CONFLICT (username) DO NOTHING""",
+            (d.get("username"), d.get("password_hash"), d.get("created_at")),
+        )
+    conn.commit()
+    print(f"  users                    {len(rows):>5} copied")
+    return len(rows)
+
+
 def main():
     if not os.path.exists(SQLITE_PATH):
         print(f"SQLite file not found: {SQLITE_PATH}")
@@ -125,6 +142,7 @@ def main():
     print("Migrating data ...")
     migrate_businesses(s, pcur)
     migrate_settings(s, pcur)
+    migrate_users(s, conn, pcur)
     migrate_logs(s, conn, pcur)
     migrate_queue(s, conn, pcur, "jiji_queue", "listing_url")
     migrate_queue(s, conn, pcur, "instagram_queue", "username")

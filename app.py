@@ -7,11 +7,20 @@ import os
 import time
 import threading
 from datetime import datetime
-from flask import Flask, jsonify, request, send_file, render_template
+import secrets
+from flask import Flask, jsonify, request, send_file, render_template, redirect, url_for
 from flask_cors import CORS
+from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
 
-import database as db
+# Database backend chosen automatically:
+#   • PostgreSQL when configured (DATABASE_URL or PG* env vars are set) — your Windows box
+#   • plain SQLite file otherwise — e.g. a colleague's Mac, no DB server needed
+# Same code runs on both with no edits.
+if os.environ.get("DATABASE_URL") or os.environ.get("PGDATABASE") or os.environ.get("PGHOST"):
+    import database_pg as db
+else:
+    import database as db
 import exporter
 
 # Import scrapers (live platforms: Jiji, Instagram, Yellow Pages)
@@ -26,6 +35,51 @@ from scrapers.tiktok      import scrape_tiktok,  discover_tiktok,  scrape_tiktok
 app       = Flask(__name__, template_folder="templates")
 CORS(app)
 scheduler = BackgroundScheduler(timezone="Africa/Kampala")
+
+# ─── Authentication (Flask-Login; single login type, SSO-ready later) ──────────
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id       = str(id)
+        self.username = username
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    row = db.get_user_by_id(user_id)
+    return User(row["id"], row["username"]) if row else None
+
+
+def _get_secret_key():
+    """Stable session secret: env var if set, else generated once and stored."""
+    key = os.environ.get("FLASK_SECRET_KEY")
+    if key:
+        return key
+    key = db.get_setting("flask_secret_key", "")
+    if not key:
+        key = secrets.token_hex(32)
+        db.save_setting("flask_secret_key", key)
+    return key
+
+
+# Endpoints reachable without logging in
+_OPEN_ENDPOINTS = {"login", "static"}
+
+
+@app.before_request
+def _require_login():
+    if request.endpoint in _OPEN_ENDPOINTS:
+        return
+    if current_user.is_authenticated:
+        return
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Authentication required"}), 401
+    return redirect(url_for("login"))
 
 # Scrape status tracker  {platform: {status, progress, total, log_id, error}}
 scrape_status: dict = {
@@ -436,7 +490,39 @@ def _setup_scheduler():
 
 @app.route("/")
 def dashboard():
-    return render_template("dashboard.html")
+    return render_template(
+        "dashboard.html",
+        username=current_user.username,
+        initials=(current_user.username[:2].upper() or "NM"),
+    )
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    needs_setup = db.user_count() == 0          # first run -> create the first account
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if needs_setup:
+            if db.create_user(username, password):
+                u = db.get_user_by_username(username)
+                login_user(User(u["id"], u["username"]))
+                return redirect(url_for("dashboard"))
+            error = "Could not create the account — choose a username and a password."
+        else:
+            u = db.verify_user(username, password)
+            if u:
+                login_user(User(u["id"], u["username"]))
+                return redirect(url_for("dashboard"))
+            error = "Invalid username or password."
+    return render_template("login.html", needs_setup=needs_setup, error=error)
+
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
 
 
 @app.route("/api/stats")
@@ -750,6 +836,7 @@ def api_schedule():
 
 def create_app():
     db.init_db()
+    app.secret_key = _get_secret_key()
     stale = db.mark_stale_running_failed()
     if stale:
         print(f"[Startup] Marked {stale} interrupted 'running' log(s) as failed.")

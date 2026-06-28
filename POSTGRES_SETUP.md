@@ -1,75 +1,68 @@
-# PostgreSQL setup & migration
+# PostgreSQL — install, prepare & migrate (Windows)
 
-This moves the app from the single-file SQLite database to PostgreSQL, which
-supports concurrent users, larger datasets, network access, and proper user
-accounts — everything needed to run the tool across an organisation.
+This moves the app from the single-file SQLite database to PostgreSQL: concurrent
+users, larger datasets, network access, and a proper place for the login accounts.
 
-Nothing here breaks the current app: `database.py` (SQLite) stays in place, and
-`database_pg.py` is a drop-in replacement you switch to when ready.
+Nothing here breaks the current app. `database.py` (SQLite) stays in place;
+`database_pg.py` is a drop-in replacement you switch to when ready. Your data —
+**including the login accounts** — migrates across.
 
 ---
 
-## 1. Install PostgreSQL
+## 1. Install PostgreSQL on Windows
 
-- **Windows / one office machine:** download the installer from
-  https://www.postgresql.org/download/ and install. Note the password you set
-  for the `postgres` user.
-- **Linux server:** `sudo apt install postgresql`.
+1. Download the installer: https://www.postgresql.org/download/windows/ (EDB installer).
+2. Run it. Accept defaults, and when asked:
+   - set a password for the **postgres** superuser — **write it down**;
+   - keep port **5432**;
+   - you can untick "Stack Builder" at the end.
+3. This also installs **pgAdmin** (a graphical admin tool) and **psql** (command line).
 
-Create the database (one time):
+## 2. Create the database
+
+Open **pgAdmin** (or the "SQL Shell (psql)" from the Start menu) and run:
 
 ```sql
 CREATE DATABASE uganda_businesses;
--- optional: a dedicated app account instead of the postgres superuser
+-- a dedicated app account (recommended instead of the postgres superuser):
 CREATE USER bsa_app WITH PASSWORD 'choose-a-strong-password';
 GRANT ALL PRIVILEGES ON DATABASE uganda_businesses TO bsa_app;
 ```
 
-## 2. Install the Python driver
+## 3. Install the Python packages
+
+In the project folder:
 
 ```
-pip install psycopg2-binary
+pip install psycopg2-binary flask-login
 ```
 
-Add `psycopg2-binary` to `requirements.txt` so it installs everywhere.
+(`flask-login` is also needed for the new sign-in; it's in `requirements.txt`.)
 
-## 3. Tell the app how to connect (environment variables)
+## 4. Tell the app how to connect (environment variables)
 
-Set **one** of these before running. Using environment variables keeps the
-password out of the code.
-
-Either a single URL:
-
-```
-DATABASE_URL=postgresql://bsa_app:your-password@localhost:5432/uganda_businesses
-```
-
-…or the individual parts:
+Set these so the password isn't in the code. On Windows you can set them in
+**System → Advanced → Environment Variables**, or temporarily in the terminal
+before running:
 
 ```
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=uganda_businesses
-PGUSER=bsa_app
-PGPASSWORD=your-password
+set DATABASE_URL=postgresql://bsa_app:choose-a-strong-password@localhost:5432/uganda_businesses
 ```
 
-On Windows you can set these in System → Environment Variables; on Linux put
-them in the service file or a `.env` loaded at startup.
+(Or set `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` individually.)
 
-## 4. Migrate existing data
+## 5. Migrate your existing data
 
-With Postgres running and the variables set:
+With PostgreSQL running and the variables set, from the project folder:
 
 ```
 python migrate_to_postgres.py
 ```
 
-This creates the tables and copies every business, log, setting, and queue row
-from `uganda_businesses.db`. It's safe to run more than once (duplicates are
-skipped).
+This creates all tables in Postgres and copies every business, log, setting,
+queue row **and login account** from `uganda_businesses.db`. Safe to re-run.
 
-## 5. Switch the app over
+## 6. Switch the app to PostgreSQL
 
 In `app.py`, change the one import line:
 
@@ -78,23 +71,28 @@ In `app.py`, change the one import line:
 import database_pg as db
 ```
 
-Then start the app as usual (`python run.py`). Everything else — routes,
-scrapers, exports, the dashboard — works unchanged, because `database_pg.py`
+Then start the app normally (`python run.py`). Everything else — routes, scrapers,
+exports, the dashboard, and login — works unchanged, because `database_pg.py`
 exposes the same functions.
 
-## 6. Back to SQLite (if ever needed)
+## 7. Revert to SQLite (if ever needed)
 
-Revert the import to `import database as db`. The SQLite file is untouched.
+Change the import back to `import database as db`. The SQLite file is untouched.
 
 ---
 
 ## Notes for the organisation rollout
 
+- **Login accounts:** the `users` table migrates too, so existing sign-ins keep
+  working after the switch. Add more accounts any time with
+  `python create_user.py <username> <password>`.
+- **Session secret:** set a fixed `FLASK_SECRET_KEY` environment variable on the
+  server so logins survive restarts (otherwise one is generated and stored in the
+  DB automatically).
 - **Backups:** schedule `pg_dump uganda_businesses > backup.sql` (e.g. daily).
-- **Access:** create one PostgreSQL user per purpose; don't share the superuser.
-- **Next step — investigator login:** a `users` table and a Flask-Login sign-in
-  page sit naturally on top of this. That's the recommended follow-up before
-  multiple investigators use it on a shared server.
-- **Scheduler caution:** if you later run under gunicorn with multiple workers,
-  run the APScheduler job in only one worker (or a separate process) so the
-  daily collection doesn't fire multiple times.
+- **Access:** use one PostgreSQL account per purpose; don't share the superuser.
+- **Scheduler:** if you later run under gunicorn with multiple workers, run the
+  APScheduler job in only one worker so the daily collection doesn't fire twice.
+- **SSO later:** login is self-managed for now but isolated in `app.py`'s `login`
+  route + the `users` table, so URA Active Directory / SSO can replace it later
+  without touching the rest of the app.

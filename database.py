@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uganda_businesses.db")
 PLATFORMS = ["jiji", "instagram", "yellowpages", "twitter", "tiktok"]
@@ -72,6 +73,16 @@ def init_db():
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT
+        )
+    """)
+
+    # App user accounts (login). Single login type — every account has full access.
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            username      TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at    TEXT NOT NULL
         )
     """)
 
@@ -520,3 +531,59 @@ def get_tiktok_queue(only_unscraped: bool = True) -> list: return _get_profile_q
 def mark_tiktok_scraped(usernames: list): _mark_profile_scraped("tiktok_queue", usernames)
 def get_tiktok_queue_stats() -> dict: return _profile_queue_stats("tiktok_queue")
 def clear_tiktok_queue(): _clear_profile_queue("tiktok_queue")
+
+
+# ── User accounts / authentication ─────────────────────────────────────────────
+
+def create_user(username: str, password: str) -> bool:
+    """Create a login account with a hashed password. False if username taken."""
+    username = (username or "").strip()
+    if not username or not password:
+        return False
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+            (username, generate_password_hash(password), datetime.now().isoformat()),
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
+def get_user_by_username(username: str):
+    conn = get_connection()
+    c    = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username = ?", ((username or "").strip(),))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id):
+    conn = get_connection()
+    c    = conn.cursor()
+    c.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def verify_user(username: str, password: str):
+    """Return the user dict if username + password are correct, else None."""
+    u = get_user_by_username(username)
+    if u and check_password_hash(u["password_hash"], password or ""):
+        return u
+    return None
+
+
+def user_count() -> int:
+    conn = get_connection()
+    c    = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM users")
+    n = c.fetchone()[0]
+    conn.close()
+    return n
