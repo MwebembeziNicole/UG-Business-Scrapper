@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UG Business Intelligence Platform</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  :root{
+    /* Core palette — 75% light / 20% blue / 5% yellow */
+    --bg:#F5F7FA;
+    --card:#FFFFFF;
+    --blue:#0D47A1;
+    --blue-dark:#093371;
+    --blue-soft:#E8EEF7;
+    --blue-line:#D6E0EE;
+    --yellow:#FFC107;
+    --yellow-soft:#FFF6DD;
+    --text:#1F2937;
+    --text-2:#6B7280;
+    --line:#E5E9F0;
+    /* Subtle platform status dots */
+    --dot-jiji:#2E7D32;
+    --dot-instagram:#C2185B;
+    --dot-yellowpages:#F9A825;
+    --dot-tiktok:#455A64;
+    --ok:#2E7D32; --ok-bg:#E7F3E8;
+    --run:#0D47A1; --run-bg:#E8EEF7;
+    --fail:#C62828; --fail-bg:#FBE9E9;
+    --idle:#6B7280; --idle-bg:#EEF1F5;
+    --warn:#B26A00; --warn-bg:#FFF6DD;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+    --shadow-md:0 2px 6px rgba(16,24,40,.06),0 4px 12px rgba(16,24,40,.05);
+    --sidebar-w:248px;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif;
+    display:flex;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--blue);text-decoration:none;}
+
+  /* ───────── Sidebar ───────── */
+  .sidebar{
+    width:var(--sidebar-w);background:var(--blue);color:#fff;
+    position:fixed;height:100vh;display:flex;flex-direction:column;z-index:100;
+  }
+  .brand{padding:22px 22px 18px;border-bottom:1px solid rgba(255,255,255,.12);}
+  .brand-row{display:flex;align-items:center;gap:11px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.14);
+    display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
+  }
+  .brand-name{font-size:14px;font-weight:600;letter-spacing:.2px;line-height:1.2;}
+  .brand-sub{font-size:11px;color:rgba(255,255,255,.65);margin-top:2px;}
+
+  .nav-group{padding:18px 14px 4px;}
+  .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:rgba(255,255,255,.5);padding:0 10px 8px;}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;padding:10px 12px;margin:2px 0;border-radius:8px;
+    cursor:pointer;color:rgba(255,255,255,.82);font-size:13.5px;font-weight:500;transition:background .15s,color .15s;
+  }
+  .nav-item i{width:18px;text-align:center;font-size:14px;}
+  .nav-item:hover{background:rgba(255,255,255,.10);color:#fff;}
+  .nav-item.active{background:#fff;color:var(--blue);font-weight:600;box-shadow:var(--shadow);}
+  .nav-item.active i{color:var(--blue);}
+
+  .sidebar-foot{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .sched-card{background:rgba(255,255,255,.10);border-radius:9px;padding:12px 13px;}
+  .sched-top{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;}
+  .sched-dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 3px rgba(255,193,7,.25);}
+  .sched-next{font-size:11px;color:rgba(255,255,255,.7);margin-top:7px;line-height:1.4;}
+
+  /* ───────── Main ───────── */
+  .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{
+    background:var(--card);border-bottom:1px solid var(--line);
+    padding:0 30px;height:62px;display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:50;
+  }
+  .crumbs{font-size:12.5px;color:var(--text-2);}
+  .crumbs b{color:var(--text);font-weight:600;}
+  .topbar-actions{display:flex;align-items:center;gap:12px;}
+  .icon-btn{
+    width:38px;height:38px;border-radius:8px;border:1px solid var(--line);background:#fff;
+    color:var(--text-2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s;
+    position:relative;
+  }
+  .icon-btn:hover{background:var(--bg);color:var(--text);}
+  .notif-dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--yellow);border:1.5px solid #fff;}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 12px;border-left:1px solid var(--line);}
+  .user-av{width:32px;height:32px;border-radius:50%;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;}
+  .user-name{font-size:13px;font-weight:600;line-height:1.1;}
+  .user-role{font-size:11px;color:var(--text-2);}
+
+  .content{padding:28px 30px 48px;max-width:1320px;width:100%;}
+  .section{display:none;animation:fade .25s ease;}
+  .section.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:20px;flex-wrap:wrap;}
+  .page-title{font-size:22px;font-weight:700;letter-spacing:-.2px;}
+  .page-sub{font-size:13px;color:var(--text-2);margin-top:4px;}
+
+  /* Buttons */
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:8px;
+    font-size:13px;font-weight:600;cursor:pointer;padding:9px 16px;transition:.15s;font-family:inherit;line-height:1;
+  }
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-lg{padding:12px 22px;font-size:14px;}
+  .btn-ghost{background:#fff;color:var(--text);border-color:var(--line);}
+  .btn-ghost:hover{background:var(--bg);}
+  .btn-soft{background:var(--blue-soft);color:var(--blue);}
+  .btn-soft:hover{background:#dbe6f5;}
+  .btn-accent{background:var(--yellow);color:#3d2c00;}
+  .btn-accent:hover{background:#f0b400;}
+  .btn-sm{padding:7px 12px;font-size:12px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* Cards */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .card-pad{padding:20px 22px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:22px;overflow:hidden;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--line);}
+  .panel-title{font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:9px;}
+  .panel-title i{color:var(--blue);font-size:13px;}
+  .panel-link{font-size:12.5px;font-weight:600;color:var(--blue);cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .panel-link:hover{text-decoration:underline;}
+
+  /* KPI cards */
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:24px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;position:relative;min-height:112px;}
+  .kpi::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--blue);}
+  .kpi.accent::before{background:var(--yellow);}
+  .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .kpi-label{font-size:12px;color:var(--text-2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+  .kpi-ic{width:34px;height:34px;border-radius:8px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:14px;}
+  .kpi.accent .kpi-ic{background:var(--yellow-soft);color:var(--warn);}
+  .kpi-val{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.5px;}
+  .kpi-foot{font-size:12px;color:var(--text-2);margin-top:8px;display:flex;align-items:center;gap:6px;}
+  .trend-up{color:var(--ok);font-weight:600;}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);
+    font-weight:600;padding:12px 22px;background:#FBFCFD;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  tbody td{padding:13px 22px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .12s;}
+  tbody tr:hover{background:#FAFBFD;}
+  th.num,td.num{text-align:right;}
+
+  .pf{display:inline-flex;align-items:center;gap:9px;font-weight:600;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .dot-jiji{background:var(--dot-jiji);}
+  .dot-instagram{background:var(--dot-instagram);}
+  .dot-yellowpages{background:var(--dot-yellowpages);}
+  .dot-tiktok{background:var(--dot-tiktok);}
+  .dot-facebook{background:#1565C0;}
+  .dot-linkedin{background:#0277BD;}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .b-ok{background:var(--ok-bg);color:var(--ok);}
+  .b-run{background:var(--run-bg);color:var(--run);}
+  .b-fail{background:var(--fail-bg);color:var(--fail);}
+  .b-idle{background:var(--idle-bg);color:var(--idle);}
+  .b-warn{background:var(--warn-bg);color:var(--warn);}
+
+  .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-size:13px;}
+  .muted{color:var(--text-2);}
+  .row-actions{display:flex;gap:7px;justify-content:flex-end;}
+
+  /* Notice strip (browser sessions) */
+  .notice{
+    display:flex;align-items:center;gap:14px;background:var(--yellow-soft);
+    border:1px solid #F3E2A6;border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;
+  }
+  .notice-ic{width:34px;height:34px;border-radius:8px;background:#fff;color:var(--warn);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;border:1px solid #F3E2A6;}
+  .notice-txt{flex:1;}
+  .notice-txt b{font-size:13px;}
+  .notice-txt p{font-size:12px;color:#7a5a14;margin-top:2px;}
+  .notice-actions{display:flex;gap:8px;}
+  .chip-login{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #E6D9B0;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);}
+  .chip-login:hover{background:#fffdf6;}
+  .chip-login.ok{color:var(--ok);border-color:#cfe6d0;}
+
+  /* Summary strip (business data) */
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;}
+  .sum{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;}
+  .sum-label{font-size:12px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:7px;}
+  .sum-val{font-size:24px;font-weight:700;margin-top:8px;letter-spacing:-.3px;}
+
+  /* Search + filters */
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+  .search{flex:1;min-width:280px;position:relative;}
+  .search i{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--text-2);font-size:14px;}
+  .search input{
+    width:100%;padding:12px 14px 12px 42px;border:1px solid var(--line);border-radius:9px;background:#fff;
+    font-size:13.5px;font-family:inherit;color:var(--text);box-shadow:var(--shadow);
+  }
+  .search input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(13,71,161,.10);}
+  .seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:9px;padding:3px;box-shadow:var(--shadow);}
+  .seg button{border:none;background:none;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--text-2);border-radius:6px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;}
+  .seg button.active{background:var(--blue-soft);color:var(--blue);}
+  .filter-pill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 14px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;box-shadow:var(--shadow);}
+  .filter-pill i{color:var(--text-2);font-size:11px;}
+
+  /* Settings */
+  .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;}
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:7px;}
+  .field .hint{font-size:11.5px;color:var(--text-2);font-weight:400;margin-top:5px;}
+  .inp{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit;color:var(--text);background:#fff;}
+  .inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(13,71,161,.10);}
+  .inp-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);}
+  .switch-row:last-child{border-bottom:none;}
+  .switch-row .lbl{font-size:13px;font-weight:500;display:flex;align-items:center;gap:9px;}
+  .sw{width:38px;height:22px;border-radius:20px;background:#CBD5E1;position:relative;cursor:pointer;transition:.2s;flex-shrink:0;}
+  .sw.on{background:var(--blue);}
+  .sw::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .sw.on::after{left:19px;}
+
+  .advanced{border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);overflow:hidden;margin-top:22px;}
+  .adv-head{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;cursor:pointer;}
+  .adv-head .t{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .adv-head .t i.lock{color:var(--text-2);font-size:13px;}
+  .adv-body{display:none;padding:0 20px 20px;border-top:1px solid var(--line);}
+  .adv-body.open{display:block;}
+  .advanced.open .chev{transform:rotate(180deg);}
+  .chev{transition:transform .2s;color:var(--text-2);}
+
+  .progress{height:5px;background:var(--blue-soft);border-radius:4px;overflow:hidden;width:100px;display:inline-block;vertical-align:middle;}
+  .progress > span{display:block;height:100%;background:var(--blue);border-radius:4px;}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;}
+  @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.summary{grid-template-columns:repeat(2,1fr);}.grid-2,.set-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ───────── Sidebar ───────── -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <div class="brand-mark"><i class="fa-solid fa-building-columns"></i></div>
+      <div>
+        <div class="brand-name">UG Business Intelligence</div>
+        <div class="brand-sub">Revenue Discovery Platform</div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Main</div>
+    <div class="nav-item active" data-nav="dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</div>
+    <div class="nav-item" data-nav="data"><i class="fa-solid fa-table-list"></i> Business Data</div>
+    <div class="nav-item" data-nav="logs"><i class="fa-solid fa-clock-rotate-left"></i> Scrape Logs</div>
+    <div class="nav-item" data-nav="settings"><i class="fa-solid fa-sliders"></i> Settings</div>
+  </div>
+  <div class="sidebar-foot">
+    <div class="sched-card">
+      <div class="sched-top"><span class="sched-dot"></span> Daily Collection</div>
+      <div class="sched-next">Scheduled 08:00 EAT<br/>Next run: Tomorrow 08:00</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ───────── Main ───────── -->
+<main class="main">
+  <div class="topbar">
+    <div class="crumbs">UG Business Intelligence &nbsp;/&nbsp; <b id="crumb">Dashboard</b></div>
+    <div class="topbar-actions">
+      <button class="icon-btn" title="Notifications"><i class="fa-regular fa-bell"></i><span class="notif-dot"></span></button>
+      <button class="icon-btn" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+      <div class="user-chip">
+        <div class="user-av">NM</div>
+        <div>
+          <div class="user-name">N. Mwebembezi</div>
+          <div class="user-role">Tax Investigator</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ════════ DASHBOARD ════════ -->
+    <section class="section active" id="s-dashboard">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Collection status overview — confirm scraping succeeded and export the data.</div>
+        </div>
+        <button class="btn btn-primary btn-lg" data-nav="data"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+      </div>
+
+      <!-- Browser session notice (phones require login) -->
+      <div class="notice">
+        <div class="notice-ic"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="notice-txt">
+          <b>Browser sessions</b>
+          <p>Phone numbers are only collected from signed-in sessions. Sign in once — the session is saved for all future scrapes.</p>
+        </div>
+        <div class="notice-actions">
+          <span class="chip-login ok"><i class="fa-solid fa-circle-check"></i> Instagram signed in</span>
+          <span class="chip-login"><i class="fa-solid fa-right-to-bracket"></i> Sign in to Jiji</span>
+        </div>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-top"><span class="kpi-label">Businesses Collected</span><span class="kpi-ic"><i class="fa-solid fa-database"></i></span></div>
+          <div class="kpi-val">90</div>
+          <div class="kpi-foot">Across 3 active platforms</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><span class="kpi-label">New Today</span><span class="kpi-ic"><i class="fa-solid fa-arrow-trend-up"></i></span></div>
+          <div class="kpi-val">13</div>
+          <div class="kpi-foot"><span class="trend-up"><i class="fa-solid fa-arrow-up"></i> +13</span> since 08:00 run</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><span class="kpi-label">Platforms Active</span><span class="kpi-ic"><i class="fa-solid fa-layer-group"></i></span></div>
+          <div class="kpi-val">3</div>
+          <div class="kpi-foot">Jiji · Instagram · Yellow Pages</div>
+        </div>
+        <div class="kpi accent">
+          <div class="kpi-top"><span class="kpi-label">Last Scrape</span><span class="kpi-ic"><i class="fa-regular fa-clock"></i></span></div>
+          <div class="kpi-val" style="font-size:24px;">Today 08:00</div>
+          <div class="kpi-foot"><span class="badge b-ok">Completed</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Platform status -->
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-signal"></i> Platform Status</div>
+            <span class="muted" style="font-size:12px;">4 platforms</span>
+          </div>
+          <table>
+            <thead><tr><th>Platform</th><th class="num">Records</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="pf"><span class="dot dot-jiji"></span>Jiji</span></td>
+                <td class="num mono">40</td>
+                <td><span class="badge b-ok">Ready</span></td>
+                <td><div class="row-actions">
+                  <button class="btn btn-soft btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Discover</button>
+                  <button class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i> Scrape</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><span class="pf"><span class="dot dot-instagram"></span>Instagram</span></td>
+                <td class="num mono">40</td>
+                <td><span class="badge b-ok">Ready</span></td>
+                <td><div class="row-actions">
+                  <button class="btn btn-soft btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Discover</button>
+                  <button class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i> Scrape</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><span class="pf"><span class="dot dot-yellowpages"></span>Yellow Pages</span></td>
+                <td class="num mono">10</td>
+                <td><span class="badge b-ok">Ready</span></td>
+                <td><div class="row-actions">
+                  <button class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i> Scrape</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><span class="pf"><span class="dot dot-tiktok"></span>TikTok</span></td>
+                <td class="num mono muted">0</td>
+                <td><span class="badge b-idle">Not Configured</span></td>
+                <td><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm" disabled><i class="fa-solid fa-gear"></i> Configure</button>
+                </div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Recent activity -->
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-wave-square"></i> Recent Activity</div>
+            <span class="panel-link" data-nav="logs">View logs <i class="fa-solid fa-arrow-right"></i></span>
+          </div>
+          <table>
+            <thead><tr><th>Time</th><th>Platform</th><th class="num">New</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="mono muted">08:04</td><td><span class="pf"><span class="dot dot-yellowpages"></span>Yellow Pages</span></td><td class="num mono">3</td><td><span class="badge b-ok">Success</span></td></tr>
+              <tr><td class="mono muted">08:02</td><td><span class="pf"><span class="dot dot-instagram"></span>Instagram</span></td><td class="num mono">6</td><td><span class="badge b-ok">Success</span></td></tr>
+              <tr><td class="mono muted">08:00</td><td><span class="pf"><span class="dot dot-jiji"></span>Jiji</span></td><td class="num mono">4</td><td><span class="badge b-ok">Success</span></td></tr>
+              <tr><td class="mono muted">Yest 08:01</td><td><span class="pf"><span class="dot dot-instagram"></span>Instagram</span></td><td class="num mono">7</td><td><span class="badge b-ok">Success</span></td></tr>
+              <tr><td class="mono muted">Yest 08:00</td><td><span class="pf"><span class="dot dot-jiji"></span>Jiji</span></td><td class="num mono">0</td><td><span class="badge b-fail">Failed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Latest discoveries -->
+      <div class="panel" style="margin-top:22px;">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-star"></i> Latest Discoveries</div>
+          <span class="panel-link" data-nav="data">View all businesses <i class="fa-solid fa-arrow-right"></i></span>
+        </div>
+        <table>
+          <thead><tr><th>Business Name</th><th>Phone</th><th>Location</th><th>Platform</th><th>Date Found</th></tr></thead>
+          <tbody id="latest-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════ BUSINESS DATA ════════ -->
+    <section class="section" id="s-data">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Business Data</div>
+          <div class="page-sub">Search, review and export every collected business record.</div>
+        </div>
+        <button class="btn btn-primary btn-lg"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+      </div>
+
+      <!-- Summary strip -->
+      <div class="summary">
+        <div class="sum"><div class="sum-label"><i class="fa-solid fa-database" style="color:var(--blue)"></i> Total Businesses</div><div class="sum-val">90</div></div>
+        <div class="sum"><div class="sum-label"><i class="fa-solid fa-phone" style="color:var(--blue)"></i> Records with Phones</div><div class="sum-val">71</div></div>
+        <div class="sum"><div class="sum-label"><i class="fa-solid fa-envelope" style="color:var(--blue)"></i> Records with Emails</div><div class="sum-val">38</div></div>
+        <div class="sum"><div class="sum-label"><i class="fa-solid fa-layer-group" style="color:var(--blue)"></i> Platforms Used</div><div class="sum-val">3</div></div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search by business name, phone number, email, or location"/></div>
+        <div class="seg">
+          <button class="active">All</button>
+          <button><span class="dot dot-jiji" style="width:8px;height:8px;"></span> Jiji</button>
+          <button><span class="dot dot-instagram" style="width:8px;height:8px;"></span> Instagram</button>
+          <button><span class="dot dot-yellowpages" style="width:8px;height:8px;"></span> Yellow Pages</button>
+        </div>
+        <span class="filter-pill"><i class="fa-solid fa-filter"></i> Has phone</span>
+      </div>
+
+      <div class="panel">
+        <table>
+          <thead><tr><th>Business Name</th><th>Phone</th><th>Email</th><th>Location</th><th>Platform</th><th>Date Found</th></tr></thead>
+          <tbody id="data-body"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-2);">
+        <span>Showing 1–10 of 90 records</span>
+        <div style="display:flex;gap:7px;">
+          <button class="btn btn-ghost btn-sm" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <button class="btn btn-ghost btn-sm">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ SCRAPE LOGS ════════ -->
+    <section class="section" id="s-logs">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Scrape Logs</div>
+          <div class="page-sub">History of every collection run across all platforms.</div>
+        </div>
+        <div class="seg">
+          <button class="active">All</button><button>Success</button><button>Failed</button>
+        </div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Platform</th><th>Date</th><th class="num">New Records</th><th class="num">Skipped</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody id="logs-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════ SETTINGS ════════ -->
+    <section class="section" id="s-settings">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Settings</div>
+          <div class="page-sub">Configure collection rules and scheduling.</div>
+        </div>
+        <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Save Changes</button>
+      </div>
+
+      <div class="set-grid">
+        <!-- Collection Rules -->
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head"><div class="panel-title"><i class="fa-solid fa-list-check"></i> Collection Rules</div></div>
+          <div class="card-pad">
+            <div class="field">
+              <label>Daily Limit <span class="hint" style="display:inline;">— businesses per platform per day</span></label>
+              <input class="inp" type="number" value="40"/>
+            </div>
+            <div class="field">
+              <label>Platforms Enabled</label>
+              <div class="switch-row"><span class="lbl"><span class="dot dot-jiji"></span> Jiji</span><span class="sw on"></span></div>
+              <div class="switch-row"><span class="lbl"><span class="dot dot-instagram"></span> Instagram</span><span class="sw on"></span></div>
+              <div class="switch-row"><span class="lbl"><span class="dot dot-yellowpages"></span> Yellow Pages</span><span class="sw on"></span></div>
+              <div class="switch-row"><span class="lbl"><span class="dot dot-tiktok"></span> TikTok</span><span class="sw"></span></div>
+            </div>
+            <div class="field">
+              <label>Duplicate Handling</label>
+              <select class="inp"><option>Skip duplicates (match on phone, email or username)</option><option>Always keep newest</option><option>Keep all records</option></select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schedule -->
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head"><div class="panel-title"><i class="fa-regular fa-clock"></i> Schedule</div></div>
+          <div class="card-pad">
+            <div class="field">
+              <label>Scrape Time <span class="hint" style="display:inline;">— East Africa Time</span></label>
+              <div class="inp-row">
+                <input class="inp" type="number" value="08" min="0" max="23"/>
+                <input class="inp" type="number" value="00" min="0" max="59"/>
+              </div>
+              <div class="hint">The scraper runs automatically every day at this time.</div>
+            </div>
+            <div class="field">
+              <label>Next Scheduled Run</label>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--yellow-soft);border:1px solid #F3E2A6;border-radius:8px;padding:11px 14px;">
+                <span class="sched-dot" style="box-shadow:0 0 0 3px rgba(255,193,7,.25);"></span>
+                <span style="font-size:13px;font-weight:600;">Tomorrow, 08:00 EAT</span>
+              </div>
+            </div>
+            <div class="switch-row" style="margin-top:6px;"><span class="lbl"><i class="fa-solid fa-bolt" style="color:var(--text-2)"></i> Automatic daily collection</span><span class="sw on"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced (collapsed) -->
+      <div class="advanced" id="adv">
+        <div class="adv-head" onclick="toggleAdv()">
+          <div class="t"><i class="fa-solid fa-lock lock"></i> Advanced Settings <span class="muted" style="font-weight:400;font-size:12px;">— technical configuration</span></div>
+          <i class="fa-solid fa-chevron-down chev"></i>
+        </div>
+        <div class="adv-body" id="advBody">
+          <div class="field" style="margin-top:18px;">
+            <label>Firecrawl API Key</label>
+            <input class="inp" type="password" value="fc-7a5a845f96e545f5b7a10a0b3b09a7d3"/>
+            <div class="hint">Used only by the legacy fallback collector. Leave as-is unless instructed by IT.</div>
+          </div>
+          <div class="field">
+            <label>Request Concurrency</label>
+            <input class="inp" type="number" value="2"/>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+// ── Dummy data ──────────────────────────────────────────────
+const LATEST = [
+  ["Kampala Auto Spares","+256 772 410 332","Kampala","jiji","Jiji","2026-06-25"],
+  ["Nakawa Beauty Lounge","+256 701 998 220","Nakawa","instagram","Instagram","2026-06-25"],
+  ["Pearl Hardware Ltd","+256 752 330 119","Ntinda","yellowpages","Yellow Pages","2026-06-25"],
+  ["Sasa Fashion House","+256 783 221 004","Kololo","instagram","Instagram","2026-06-25"],
+  ["Victoria Tyres & Rims","+256 700 556 711","Industrial Area","jiji","Jiji","2026-06-25"],
+];
+const DATA = [
+  ["Kampala Auto Spares","+256 772 410 332","sales@klaspares.ug","Kampala","jiji","Jiji","2026-06-25"],
+  ["Nakawa Beauty Lounge","+256 701 998 220","—","Nakawa","instagram","Instagram","2026-06-25"],
+  ["Pearl Hardware Ltd","+256 752 330 119","info@pearlhardware.co.ug","Ntinda","yellowpages","Yellow Pages","2026-06-25"],
+  ["Sasa Fashion House","+256 783 221 004","sasa.fashion@gmail.com","Kololo","instagram","Instagram","2026-06-25"],
+  ["Victoria Tyres & Rims","+256 700 556 711","—","Industrial Area","jiji","Jiji","2026-06-25"],
+  ["Bugolobi Fresh Grocers","+256 759 112 887","—","Bugolobi","yellowpages","Yellow Pages","2026-06-24"],
+  ["Equator Print Solutions","+256 772 654 200","equatorprint@gmail.com","Kampala","jiji","Jiji","2026-06-24"],
+  ["Aurora Events UG","+256 705 330 776","hello@auroraevents.ug","Munyonyo","instagram","Instagram","2026-06-24"],
+  ["Lake View Furniture","+256 781 909 432","—","Entebbe","jiji","Jiji","2026-06-24"],
+  ["Crested Pharmacy","+256 752 778 010","crested.rx@gmail.com","Wandegeya","yellowpages","Yellow Pages","2026-06-24"],
+];
+const LOGS = [
+  ["yellowpages","Yellow Pages","2026-06-25 08:04",3,12,"00:48","ok","Success"],
+  ["instagram","Instagram","2026-06-25 08:02",6,9,"02:11","ok","Success"],
+  ["jiji","Jiji","2026-06-25 08:00",4,16,"03:27","ok","Success"],
+  ["instagram","Instagram","2026-06-25 11:14",0,0,"—","run","Running"],
+  ["yellowpages","Yellow Pages","2026-06-24 08:03",2,10,"00:51","ok","Success"],
+  ["instagram","Instagram","2026-06-24 08:01",7,5,"02:30","ok","Success"],
+  ["jiji","Jiji","2026-06-24 08:00",0,0,"00:12","fail","Failed"],
+  ["jiji","Jiji","2026-06-23 08:00",5,14,"03:02","ok","Success"],
+];
+const PF_LABEL={jiji:"Jiji",instagram:"Instagram",yellowpages:"Yellow Pages",tiktok:"TikTok"};
+
+function dot(p){return `<span class="dot dot-${p}"></span>`;}
+function pf(p,label){return `<span class="pf">${dot(p)}${label}</span>`;}
+
+// Latest discoveries
+document.getElementById('latest-body').innerHTML = LATEST.map(r=>`
+  <tr><td style="font-weight:600;">${r[0]}</td><td class="mono">${r[1]}</td><td>${r[2]}</td><td>${pf(r[3],r[4])}</td><td class="mono muted">${r[5]}</td></tr>`).join('');
+
+// Business data
+document.getElementById('data-body').innerHTML = DATA.map(r=>`
+  <tr><td style="font-weight:600;">${r[0]}</td><td class="mono">${r[1]}</td>
+  <td>${r[2]==='—'?'<span class="muted">—</span>':r[2]}</td><td>${r[3]}</td><td>${pf(r[4],r[5])}</td><td class="mono muted">${r[6]}</td></tr>`).join('');
+
+// Logs
+const badge={ok:'<span class="badge b-ok">Success</span>',run:'<span class="badge b-run">Running</span>',fail:'<span class="badge b-fail">Failed</span>'};
+document.getElementById('logs-body').innerHTML = LOGS.map(r=>`
+  <tr><td>${pf(r[0],r[1])}</td><td class="mono muted">${r[2]}</td><td class="num mono">${r[3]}</td>
+  <td class="num mono muted">${r[4]}</td><td class="mono muted">${r[5]}</td><td>${badge[r[6]]}</td></tr>`).join('');
+
+// Navigation
+const CRUMB={dashboard:'Dashboard',data:'Business Data',logs:'Scrape Logs',settings:'Settings'};
+function nav(name){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===name));
+  document.getElementById('crumb').textContent=CRUMB[name];
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('[data-nav]').forEach(el=>el.addEventListener('click',()=>nav(el.dataset.nav)));
+
+// Toggles
+document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>s.classList.toggle('on')));
+document.querySelectorAll('.seg').forEach(seg=>seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{seg.querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');})));
+function toggleAdv(){document.getElementById('adv').classList.toggle('open');document.getElementById('advBody').classList.toggle('open');}
+</script>
+</body>
+</html>

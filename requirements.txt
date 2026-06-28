@@ -1,0 +1,14 @@
+flask==3.0.3
+flask-cors==4.0.1
+firecrawl-py==1.4.0
+pandas==2.2.2
+openpyxl==3.1.2
+apscheduler==3.10.4
+playwright==1.44.0
+requests==2.32.3
+beautifulsoup4==4.12.3
+python-dotenv==1.0.1
+# Selenium + anti-detection (logged-in scrapers: instagram.py, jiji.py, browser.py)
+selenium>=4.20.0
+undetected-chromedriver>=3.5.5
+webdriver-manager>=4.0.1

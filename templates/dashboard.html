@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="color-scheme" content="light dark"/>
+<title>UG Business Intelligence Platform</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  :root{
+    color-scheme: light;            /* tell the browser this page manages its own theme */
+    --bg:#F6F8FB; --card:#FFFFFF;
+    --blue:#0D47A1; --blue-dark:#093371; --blue-soft:#E8EEF7; --blue-line:#D6E0EE;
+    --yellow:#FFC107; --yellow-soft:#FFF6DD;
+    --text:#1F2937; --text-2:#6B7280; --line:#E9EDF3;
+    --dot-jiji:#2E7D32; --dot-instagram:#C2185B; --dot-yellowpages:#F9A825; --dot-twitter:#1DA1F2; --dot-tiktok:#111111;
+    --ok:#2E7D32; --ok-bg:#E7F3E8; --run:#0D47A1; --run-bg:#E8EEF7;
+    --fail:#C62828; --fail-bg:#FBE9E9; --idle:#6B7280; --idle-bg:#EEF1F5;
+    --warn:#B26A00; --warn-bg:#FFF6DD;
+    --shadow:0 1px 2px rgba(16,24,40,.03); --shadow-md:0 1px 3px rgba(16,24,40,.05);
+    --sidebar-w:248px; --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif;display:flex;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;}
+  a{color:var(--blue);text-decoration:none;}
+
+  .sidebar{width:var(--sidebar-w);background:var(--blue);color:#fff;position:fixed;height:100vh;display:flex;flex-direction:column;z-index:100;}
+  .brand{padding:22px 22px 18px;border-bottom:1px solid rgba(255,255,255,.12);}
+  .brand-row{display:flex;align-items:center;gap:11px;}
+  .brand-mark{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .brand-name{font-size:14px;font-weight:600;letter-spacing:.2px;line-height:1.2;}
+  .brand-sub{font-size:11px;color:rgba(255,255,255,.65);margin-top:2px;}
+  .nav-group{padding:18px 14px 4px;}
+  .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:rgba(255,255,255,.5);padding:0 10px 8px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:2px 0;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.82);font-size:13.5px;font-weight:500;transition:background .15s,color .15s;}
+  .nav-item i{width:18px;text-align:center;font-size:14px;}
+  .nav-item:hover{background:rgba(255,255,255,.10);color:#fff;}
+  .nav-item.active{background:#fff;color:var(--blue);font-weight:600;box-shadow:var(--shadow);}
+  .nav-item.active i{color:var(--blue);}
+  .flow{padding:16px 22px 8px;margin-top:4px;}
+  .flow-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:rgba(255,255,255,.5);margin-bottom:10px;}
+  .flow-step{display:flex;align-items:center;gap:10px;font-size:12px;color:rgba(255,255,255,.78);padding:4px 0;}
+  .flow-step .n{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex-shrink:0;}
+  .sidebar-foot{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,.12);}
+  .sched-card{background:rgba(255,255,255,.10);border-radius:9px;padding:12px 13px;}
+  .sched-top{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;}
+  .sched-dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 3px rgba(255,193,7,.25);}
+  .sched-next{font-size:11px;color:rgba(255,255,255,.7);margin-top:7px;line-height:1.4;}
+
+  .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{background:var(--card);border-bottom:1px solid var(--line);padding:0 30px;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+  .crumbs{font-size:12.5px;color:var(--text-2);}
+  .crumbs b{color:var(--text);font-weight:600;}
+  .topbar-actions{display:flex;align-items:center;gap:12px;}
+  .icon-btn{width:38px;height:38px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--text-2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+  .icon-btn:hover{background:var(--bg);color:var(--text);}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 12px;border-left:1px solid var(--line);}
+  .user-av{width:32px;height:32px;border-radius:50%;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;}
+  .user-name{font-size:13px;font-weight:600;line-height:1.1;}
+  .user-role{font-size:11px;color:var(--text-2);}
+
+  .content{padding:30px 32px 52px;max-width:1240px;width:100%;}
+  .section{display:none;animation:fade .25s ease;}
+  .section.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:26px;gap:20px;flex-wrap:wrap;}
+  .page-title{font-size:22px;font-weight:700;letter-spacing:-.2px;}
+  .page-sub{font-size:13px;color:var(--text-2);margin-top:5px;}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;padding:9px 16px;transition:.15s;font-family:inherit;line-height:1;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-lg{padding:13px 26px;font-size:14.5px;}
+  .btn-outline{background:#fff;color:var(--blue);border-color:var(--blue-line);}
+  .btn-outline:hover{background:var(--blue-soft);border-color:var(--blue);}
+  .btn-ghost{background:#fff;color:var(--text);border-color:var(--line);}
+  .btn-ghost:hover{background:var(--bg);}
+  .btn-sm{padding:8px 14px;font-size:12.5px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .card-pad{padding:22px 24px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--line);}
+  .panel-title{font-size:14.5px;font-weight:600;}
+  .panel-link{font-size:12.5px;font-weight:600;color:var(--blue);cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .panel-link:hover{text-decoration:underline;}
+
+  .status-card{display:flex;align-items:center;gap:26px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-md);padding:30px 34px;margin-bottom:26px;}
+  .status-icon{width:60px;height:60px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+  .status-icon.run{background:var(--run-bg);color:var(--run);}
+  .status-icon.idle{background:var(--idle-bg);color:var(--idle);}
+  .status-icon.fail{background:var(--fail-bg);color:var(--fail);}
+  .status-main{flex:1;min-width:240px;}
+  .status-eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--text-2);font-weight:600;}
+  .status-head{font-size:17px;font-weight:700;margin-top:4px;color:var(--text);}
+  .status-count{font-size:15px;color:var(--text-2);margin-top:12px;}
+  .status-count b{font-size:34px;font-weight:700;color:var(--text);letter-spacing:-.5px;vertical-align:-4px;margin-right:6px;}
+  .status-meta{font-size:12.5px;color:var(--text-2);margin-top:8px;}
+  .status-action{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+
+  .notice{display:flex;align-items:center;gap:14px;background:var(--yellow-soft);border:1px solid #F3E2A6;border-radius:var(--radius);padding:12px 18px;margin-bottom:26px;flex-wrap:wrap;}
+  .notice-ic{color:var(--warn);font-size:14px;flex-shrink:0;}
+  .notice-txt{flex:1;font-size:12.5px;color:#7a5a14;min-width:220px;}
+  .notice-txt b{color:var(--text);}
+  .notice-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip-login{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #E6D9B0;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);}
+  .chip-login:hover{background:#fffdf6;}
+  .chip-login.ok{color:var(--ok);border-color:#cfe6d0;cursor:default;}
+
+  table{width:100%;border-collapse:collapse;}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-2);font-weight:600;padding:12px 16px;background:#FBFCFD;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody td{padding:13px 16px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .12s;}
+  tbody tr:hover{background:#FAFBFD;}
+  th.num,td.num{text-align:right;}
+  .table-scroll{max-height:640px;overflow-y:auto;}
+  .table-scroll thead th{position:sticky;top:0;z-index:1;}
+
+  .pf{display:inline-flex;align-items:center;gap:9px;font-weight:600;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .dot-jiji{background:var(--dot-jiji);}.dot-instagram{background:var(--dot-instagram);}
+  .dot-yellowpages{background:var(--dot-yellowpages);}.dot-twitter{background:var(--dot-twitter);}.dot-tiktok{background:var(--dot-tiktok);}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .b-ok{background:var(--ok-bg);color:var(--ok);}.b-run{background:var(--run-bg);color:var(--run);}
+  .b-fail{background:var(--fail-bg);color:var(--fail);}.b-idle{background:var(--idle-bg);color:var(--idle);}
+  .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-size:13px;}
+  .muted{color:var(--text-2);}
+  .del-btn{background:none;border:none;color:var(--text-2);cursor:pointer;font-size:13px;}
+  .del-btn:hover{color:var(--fail);}
+
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+  .search{flex:1;min-width:260px;position:relative;}
+  .search i{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--text-2);font-size:14px;}
+  .search input{width:100%;padding:12px 14px 12px 42px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:13.5px;font-family:inherit;color:var(--text);box-shadow:var(--shadow);}
+  .search input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(13,71,161,.10);}
+  .seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:9px;padding:3px;box-shadow:var(--shadow);}
+  .seg button{border:none;background:none;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--text-2);border-radius:6px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;}
+  .seg button.active{background:var(--blue-soft);color:var(--blue);}
+  .sort-select{appearance:none;-webkit-appearance:none;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 34px 10px 14px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;box-shadow:var(--shadow);background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%236B7280' d='M6 8L2 4h8z'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
+  .sort-select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(13,71,161,.10);}
+  .filter-pill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 14px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;box-shadow:var(--shadow);user-select:none;}
+  .filter-pill i{color:var(--text-2);font-size:11px;}
+  .filter-pill.active{background:var(--blue-soft);color:var(--blue);border-color:var(--blue);}
+  .filter-pill.active i{color:var(--blue);}
+
+  .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+  .field{margin-bottom:18px;}.field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:7px;}
+  .field .hint{font-size:11.5px;color:var(--text-2);font-weight:400;margin-top:5px;}
+  .inp{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit;color:var(--text);background:#fff;}
+  .inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(13,71,161,.10);}
+  .inp-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);}
+  .switch-row:last-child{border-bottom:none;}
+  .switch-row .lbl{font-size:13px;font-weight:500;display:flex;align-items:center;gap:9px;}
+  .sw{width:38px;height:22px;border-radius:20px;background:#CBD5E1;position:relative;cursor:pointer;transition:.2s;flex-shrink:0;}
+  .sw.on{background:var(--blue);}
+  .sw::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .sw.on::after{left:19px;}
+  .advanced{border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);overflow:hidden;margin-top:24px;}
+  .adv-head{display:flex;align-items:center;justify-content:space-between;padding:15px 22px;cursor:pointer;}
+  .adv-head .t{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .adv-head .t i.lock{color:var(--text-2);font-size:13px;}
+  .adv-body{display:none;padding:0 22px 22px;border-top:1px solid var(--line);}
+  .adv-body.open{display:block;}
+  .advanced.open .chev{transform:rotate(180deg);}
+  .chev{transition:transform .2s;color:var(--text-2);}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+  @media(max-width:1100px){.grid-2,.set-grid{grid-template-columns:1fr;}}
+
+  .toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:10px;z-index:9999;}
+  .toast{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-size:13px;min-width:240px;box-shadow:0 4px 20px rgba(16,24,40,.12);animation:slideIn .3s ease;display:flex;align-items:center;gap:10px;}
+  .toast.success{border-left:3px solid var(--ok);}
+  .toast.error{border-left:3px solid var(--fail);}
+  .toast.info{border-left:3px solid var(--blue);}
+  @keyframes slideIn{from{transform:translateX(40px);opacity:0;}to{transform:none;opacity:1;}}
+  .no-data{text-align:center;padding:34px;color:var(--text-2);}
+
+  /* ── Dark mode ── */
+  body.dark{
+    color-scheme: dark;
+    --bg:#0E1626; --card:#16203A;
+    --blue:#2D6CDF; --blue-dark:#2257BE; --blue-soft:#1E2C49; --blue-line:#2C3C5C;
+    --yellow-soft:#3A2E12;
+    --text:#E6EAF2; --text-2:#9AA7BD; --line:#26324C;
+    --ok:#5BC47E; --ok-bg:#163021; --run:#7FA8EE; --run-bg:#172541;
+    --fail:#F08A8A; --fail-bg:#341A1A; --idle:#9AA7BD; --idle-bg:#222C40;
+    --warn:#E0B25A; --warn-bg:#3A2E12;
+    --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-md:0 2px 8px rgba(0,0,0,.5);
+  }
+  body.dark .icon-btn,
+  body.dark .btn-outline,
+  body.dark .btn-ghost,
+  body.dark .search input,
+  body.dark .seg,
+  body.dark .filter-pill,
+  body.dark .inp,
+  body.dark .toast{ background:var(--card); color:var(--text); }
+  body.dark .icon-btn{ color:var(--text-2); }
+  body.dark .btn-outline{ color:var(--blue); }
+  body.dark .sort-select{ background-color:var(--card); color:var(--text); }
+  body.dark thead th{ background:#101A2E; }
+  body.dark tbody tr:hover{ background:rgba(255,255,255,.035); }
+  body.dark .chip-login{ background:var(--card); border-color:#4A3F1E; color:var(--text); }
+  body.dark .chip-login.ok{ color:var(--ok); border-color:#244A30; }
+  body.dark .notice{ border-color:#4A3F1E; }
+  body.dark .notice-txt{ color:#E5C98C; }
+  body.dark .sw{ background:#3A4660; }
+  body.dark .search input:focus,
+  body.dark .inp:focus,
+  body.dark .sort-select:focus{ border-color:var(--blue); box-shadow:0 0 0 3px rgba(45,108,223,.20); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <div class="brand-mark"><i class="fa-solid fa-building-columns"></i></div>
+      <div>
+        <div class="brand-name">Business Scraping Agent</div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Main</div>
+    <div class="nav-item active" data-nav="dashboard" onclick="showSection('dashboard')"><i class="fa-solid fa-gauge-high"></i> Dashboard</div>
+    <div class="nav-item" data-nav="data" onclick="showSection('data')"><i class="fa-solid fa-table-list"></i> Business Data</div>
+    <div class="nav-item" data-nav="logs" onclick="showSection('logs')"><i class="fa-solid fa-clock-rotate-left"></i> Scrape Logs</div>
+    <div class="nav-item" data-nav="settings" onclick="showSection('settings')"><i class="fa-solid fa-sliders"></i> Settings</div>
+  </div>
+  <div class="sidebar-foot">
+    <div class="sched-card">
+      <div class="sched-top"><span class="sched-dot"></span> Daily Collection</div>
+      <div class="sched-next"><span id="sidebar-schedule">Scheduled 08:00 EAT</span><br/>Next run: <span id="sidebar-nextrun">—</span></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="crumbs">Business Scraping Agent &nbsp;/&nbsp; <b id="crumb">Dashboard</b></div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="themeToggle" title="Toggle light / dark mode" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i></button>
+      <button class="icon-btn" title="Refresh" onclick="refreshAll()"><i class="fa-solid fa-rotate-right"></i></button>
+      <div class="user-chip">
+        <div class="user-av">NM</div>
+        <div><div class="user-name">N. Mwebembezi</div><div class="user-role">Tax Investigator</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ════════ DASHBOARD ════════ -->
+    <section class="section active" id="section-dashboard">
+      <div class="page-head">
+        <div><div class="page-title">Dashboard</div><div class="page-sub">Today's collection at a glance.</div></div>
+      </div>
+
+      <div class="status-card">
+        <div class="status-icon" id="statusIcon"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="status-main">
+          <div class="status-eyebrow">Today's Collection</div>
+          <div class="status-head" id="statusHead">Loading…</div>
+          <div class="status-count"><b id="statusCount">—</b> Businesses collected</div>
+          <div class="status-meta" id="statusMeta">&nbsp;</div>
+        </div>
+        <div class="status-action">
+          <button class="btn btn-primary btn-lg" onclick="exportToday()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+        </div>
+      </div>
+
+      <div class="notice">
+        <i class="fa-solid fa-shield-halved notice-ic"></i>
+        <div class="notice-txt"><b>Browser sessions.</b> Sign in once — the session is saved for future collections.</div>
+        <div class="notice-actions" id="login-bar"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head">
+            <div class="panel-title">Platform Status</div>
+            <button class="btn btn-primary btn-sm" id="runCollection" onclick="runCollection()"><i class="fa-solid fa-play"></i> Run Collection</button>
+          </div>
+          <table>
+            <thead><tr><th>Platform</th><th>Last Collection</th><th>Status</th><th class="num">Records</th><th style="text-align:right;">Run</th></tr></thead>
+            <tbody id="platform-rows"><tr><td colspan="5" class="no-data"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head">
+            <div class="panel-title">Collection History</div>
+            <span class="panel-link" onclick="showSection('logs')">Full logs <i class="fa-solid fa-arrow-right"></i></span>
+          </div>
+          <table>
+            <thead><tr><th>Date</th><th class="num">Businesses Collected</th><th>Status</th></tr></thead>
+            <tbody id="history-rows"><tr><td colspan="3" class="no-data">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:24px;">
+        <div class="panel-head">
+          <div class="panel-title">Latest Businesses</div>
+          <button class="btn btn-outline btn-sm" onclick="showSection('data')">View All Businesses <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <table>
+          <thead><tr><th>Business Name</th><th>Phone</th><th>Location</th><th>Platform</th><th>Date Found</th></tr></thead>
+          <tbody id="latest-body"><tr><td colspan="5" class="no-data">—</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════ BUSINESS DATA ════════ -->
+    <section class="section" id="section-data">
+      <div class="page-head">
+        <div><div class="page-title">Business Data</div><div class="page-sub">Review every collected business record, then export to Excel.</div></div>
+        <button class="btn btn-primary btn-lg" onclick="exportToday()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+      </div>
+      <div class="toolbar">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by business name, phone number, email, or location"/></div>
+        <div class="seg" id="pfSeg">
+          <button class="active" data-pf="all">All</button>
+          <button data-pf="jiji"><span class="dot dot-jiji" style="width:8px;height:8px;"></span> Jiji</button>
+          <button data-pf="instagram"><span class="dot dot-instagram" style="width:8px;height:8px;"></span> Instagram</button>
+          <button data-pf="yellowpages"><span class="dot dot-yellowpages" style="width:8px;height:8px;"></span> Yellow Pages</button>
+          <button data-pf="twitter"><span class="dot dot-twitter" style="width:8px;height:8px;"></span> Twitter / X</button>
+          <button data-pf="tiktok"><span class="dot dot-tiktok" style="width:8px;height:8px;"></span> TikTok</button>
+        </div>
+        <select class="sort-select" id="sortSel" title="Sort records">
+          <option value="newest">Sort by Newest</option>
+          <option value="name">Sort by Name</option>
+          <option value="location">Sort by Location</option>
+        </select>
+        <span class="filter-pill" id="fltPhone"><i class="fa-solid fa-phone"></i> Has Phone</span>
+        <span class="filter-pill" id="fltEmail"><i class="fa-solid fa-envelope"></i> Has Email</span>
+      </div>
+      <div class="panel">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Business Name</th><th>Phone</th><th>Email</th><th>Location</th><th>Platform</th><th>Date Found</th><th></th></tr></thead>
+            <tbody id="data-body"><tr><td colspan="7" class="no-data"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-2);">
+        <span id="dataCount">—</span>
+        <div style="display:flex;gap:7px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" id="prevBtn" onclick="pageData(-1)" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <button class="btn btn-ghost btn-sm" id="nextBtn" onclick="pageData(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ SCRAPE LOGS ════════ -->
+    <section class="section" id="section-logs">
+      <div class="page-head">
+        <div><div class="page-title">Scrape Logs</div><div class="page-sub">Confirm collection history across all platforms.</div></div>
+        <div class="seg" id="logSeg">
+          <button class="active" data-log="all">All</button>
+          <button data-log="ok">Completed</button>
+          <button data-log="fail">Failed</button>
+        </div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Platform</th><th>Collection Date</th><th>Status</th><th class="num">Records Collected</th></tr></thead>
+          <tbody id="logs-body"><tr><td colspan="4" class="no-data"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════ SETTINGS ════════ -->
+    <section class="section" id="section-settings">
+      <div class="page-head">
+        <div><div class="page-title">Settings</div><div class="page-sub">Configure daily collection. Technical options are under Administrator Settings.</div></div>
+        <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-check"></i> Save Changes</button>
+      </div>
+      <div class="set-grid">
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head"><div class="panel-title">Daily Collection</div></div>
+          <div class="card-pad">
+            <div class="field">
+              <label>Daily Collection Time <span class="hint" style="display:inline;">— East Africa Time</span></label>
+              <div class="inp-row">
+                <input class="inp" type="number" id="set-hour" value="08" min="0" max="23"/>
+                <input class="inp" type="number" id="set-min" value="00" min="0" max="59"/>
+              </div>
+              <div class="hint">Collection runs automatically every day at this time.</div>
+            </div>
+            <div class="field">
+              <label>Daily Collection Limit <span class="hint" style="display:inline;">— businesses per platform per day</span></label>
+              <input class="inp" type="number" id="set-limit" value="40" min="10" max="200"/>
+            </div>
+            <div class="switch-row" style="margin-top:6px;"><span class="lbl"><i class="fa-solid fa-bolt" style="color:var(--text-2)"></i> Automatic daily collection</span><span class="sw on" id="autoSw"></span></div>
+          </div>
+        </div>
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-head"><div class="panel-title">Enabled Platforms</div></div>
+          <div class="card-pad">
+            <div class="switch-row"><span class="lbl"><span class="dot dot-jiji"></span> Jiji</span><span class="sw on" data-platform="jiji"></span></div>
+            <div class="switch-row"><span class="lbl"><span class="dot dot-instagram"></span> Instagram</span><span class="sw on" data-platform="instagram"></span></div>
+            <div class="switch-row"><span class="lbl"><span class="dot dot-yellowpages"></span> Yellow Pages</span><span class="sw on" data-platform="yellowpages"></span></div>
+            <div class="switch-row"><span class="lbl"><span class="dot dot-twitter"></span> Twitter / X</span><span class="sw on" data-platform="twitter"></span></div>
+            <div class="switch-row"><span class="lbl"><span class="dot dot-tiktok"></span> TikTok</span><span class="sw on" data-platform="tiktok"></span></div>
+            <div class="field" style="margin-top:14px;">
+              <label>Next Scheduled Run</label>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--yellow-soft);border:1px solid #F3E2A6;border-radius:8px;padding:11px 14px;">
+                <span class="sched-dot" style="box-shadow:0 0 0 3px rgba(255,193,7,.25);"></span>
+                <span style="font-size:13px;font-weight:600;" id="set-nextrun">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="advanced" id="adv">
+        <div class="adv-head" onclick="toggleAdv()">
+          <div class="t"><i class="fa-solid fa-lock lock"></i> Administrator Settings <span class="muted" style="font-weight:400;font-size:12px;">— technical configuration</span></div>
+          <i class="fa-solid fa-chevron-down chev"></i>
+        </div>
+        <div class="adv-body" id="advBody">
+          <div class="field" style="margin-top:18px;">
+            <label>Firecrawl API Key</label>
+            <input class="inp" type="password" id="set-apikey" placeholder="fc-…"/>
+            <div class="hint">Used only by the legacy fallback collector. Leave as-is unless instructed by IT.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const PLATFORMS = ['jiji','instagram','yellowpages','twitter','tiktok'];
+const PLATFORM_LABELS = {jiji:'Jiji',instagram:'Instagram',yellowpages:'Yellow Pages',twitter:'Twitter / X',tiktok:'TikTok'};
+let statsData = {}, logsData = [];
+let pollingTimer = null;
+
+// Business Data table state
+const TABLE_LIMIT = 100;
+const dstate = { search:'', platform:'all', phone:false, email:false, sort:'newest', offset:0, lastCount:0 };
+const SORT_LABEL = { newest:'Newest', name:'Name', location:'Location' };
+
+function esc(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function dot(p){return `<span class="dot dot-${p}"></span>`;}
+function pf(p){return `<span class="pf">${dot(p)}${PLATFORM_LABELS[p]||p}</span>`;}
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+function showSection(name){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===name));
+  const titles={dashboard:'Dashboard',data:'Business Data',logs:'Scrape Logs',settings:'Settings'};
+  document.getElementById('crumb').textContent=titles[name]||name;
+  window.scrollTo(0,0);
+  if(name==='data') loadTable();
+  if(name==='logs') renderLogs();
+  if(name==='settings') loadSettings();
+}
+
+// ── Dashboard data ──────────────────────────────────────────────────────────
+async function loadStats(){
+  try{ const r=await fetch('/api/stats'); statsData=await r.json(); }
+  catch(e){ return; }
+  renderPlatformRows();
+  renderStatusCard();
+}
+async function loadLogs(){
+  try{ const r=await fetch('/api/logs'); logsData=await r.json(); }
+  catch(e){ logsData=[]; }
+  renderHistory();
+  renderStatusCard();
+  if(document.getElementById('section-logs').classList.contains('active')) renderLogs();
+}
+async function loadLatest(){
+  try{
+    const r=await fetch('/api/businesses?limit=5');
+    const recs=await r.json();
+    const tb=document.getElementById('latest-body');
+    tb.innerHTML = recs.length ? recs.map(x=>`
+      <tr><td style="font-weight:600;">${esc(x.business_name)}</td>
+      <td class="mono">${esc(x.phone)||'<span class="muted">—</span>'}</td>
+      <td>${esc(x.location)||'<span class="muted">—</span>'}</td>
+      <td>${pf(x.platform)}</td>
+      <td class="mono muted">${(x.scraped_at||'').substring(0,10)}</td></tr>`).join('')
+      : `<tr><td colspan="5" class="no-data">No businesses collected yet.</td></tr>`;
+  }catch(e){}
+}
+
+function lastCollectionFor(p){
+  const log = logsData.find(l=>l.platform===p && l.started_at);
+  return log ? (log.started_at||'').substring(0,16).replace('T',' ') : '—';
+}
+
+function renderPlatformRows(){
+  const rows = PLATFORMS.map(p=>{
+    const s=statsData[p]||{};
+    const st=s.scrape_status||'idle';
+    const badge = st==='running'?'<span class="badge b-run">Running</span>'
+               : st==='error'?'<span class="badge b-fail">Error</span>'
+               : st==='done'?'<span class="badge b-ok">Completed</span>'
+               : '<span class="badge b-idle">Idle</span>';
+    const btn = st==='running'
+      ? `<button class="btn btn-outline btn-sm" disabled><i class="fa-solid fa-spinner fa-spin"></i></button>`
+      : `<button class="btn btn-outline btn-sm" onclick="startScrape('${p}')"><i class="fa-solid fa-play"></i> Run</button>`;
+    return `<tr><td>${pf(p)}</td><td class="mono muted">${lastCollectionFor(p)}</td><td>${badge}</td><td class="num mono">${(s.total||0).toLocaleString()}</td><td style="text-align:right;">${btn}</td></tr>`;
+  }).join('');
+  document.getElementById('platform-rows').innerHTML = rows;
+}
+
+async function startScrape(p){
+  try{
+    const r=await fetch('/api/scrape/'+p,{method:'POST'});
+    const d=await r.json();
+    if(r.ok){ toast('Started '+(PLATFORM_LABELS[p]||p)+'…','info'); startPolling(); }
+    else toast(d.error||'Could not start','error');
+  }catch(e){ toast('Network error — is the app running?','error'); }
+}
+
+function renderStatusCard(){
+  const anyRunning = PLATFORMS.some(p=>(statsData[p]||{}).scrape_status==='running');
+  let todayTotal = 0; PLATFORMS.forEach(p=>{ todayTotal += (statsData[p]||{}).today||0; });
+  const icon = document.getElementById('statusIcon');
+  const head = document.getElementById('statusHead');
+  const count= document.getElementById('statusCount');
+  const meta = document.getElementById('statusMeta');
+  count.textContent = todayTotal.toLocaleString();
+  // latest completed log time today
+  const lastOk = logsData.find(l=>l.status==='success');
+  const lastErr = logsData.find(l=>l.status==='error');
+  if(anyRunning){
+    icon.className='status-icon run'; icon.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>';
+    head.textContent='Collection in progress…';
+    meta.textContent='Collecting businesses across platforms.';
+  } else if(todayTotal>0){
+    icon.className='status-icon'; icon.innerHTML='<i class="fa-solid fa-circle-check"></i>';
+    head.textContent='Collection completed successfully';
+    meta.textContent = lastOk ? ('Last run '+ (lastOk.completed_at||lastOk.started_at||'').substring(0,16).replace('T',' ')) : 'Collected today.';
+  } else {
+    const failedToday = lastErr && (lastErr.started_at||'').startsWith(new Date().toISOString().substring(0,10));
+    icon.className = failedToday?'status-icon fail':'status-icon idle';
+    icon.innerHTML = failedToday?'<i class="fa-solid fa-triangle-exclamation"></i>':'<i class="fa-solid fa-circle-info"></i>';
+    head.textContent = failedToday?'Last collection failed':'No new businesses collected today';
+    meta.textContent = 'You can still export the existing records.';
+  }
+}
+
+function dateLabel(d){
+  const today=new Date(); const y=new Date(today); y.setDate(today.getDate()-1);
+  const iso=today.toISOString().substring(0,10), yiso=y.toISOString().substring(0,10);
+  if(d===iso) return 'Today';
+  if(d===yiso) return 'Yesterday';
+  const dt=new Date(d+'T00:00:00');
+  return isNaN(dt)?d:dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+function renderHistory(){
+  const byDate={};
+  logsData.forEach(l=>{
+    const d=(l.started_at||'').substring(0,10); if(!d) return;
+    if(!byDate[d]) byDate[d]={new:0,run:false,ok:false,err:false};
+    byDate[d].new += l.count_new||0;
+    if(l.status==='running') byDate[d].run=true;
+    else if(l.status==='success') byDate[d].ok=true;
+    else if(l.status==='error') byDate[d].err=true;
+  });
+  const dates=Object.keys(byDate).sort().reverse().slice(0,6);
+  const tb=document.getElementById('history-rows');
+  tb.innerHTML = dates.length ? dates.map(d=>{
+    const v=byDate[d];
+    const badge = v.run?'<span class="badge b-run">Running</span>'
+               : v.ok?'<span class="badge b-ok">Completed</span>'
+               : v.err?'<span class="badge b-fail">Failed</span>'
+               : '<span class="badge b-idle">—</span>';
+    return `<tr><td>${dateLabel(d)}</td><td class="num mono">${v.new.toLocaleString()}</td><td>${badge}</td></tr>`;
+  }).join('') : `<tr><td colspan="3" class="no-data">No collection history yet.</td></tr>`;
+}
+
+// ── Run Collection ──────────────────────────────────────────────────────────
+async function runCollection(){
+  const btn=document.getElementById('runCollection');
+  try{
+    const r=await fetch('/api/scrape/all',{method:'POST'});
+    const d=await r.json();
+    if(r.ok){ toast('Collection started for: '+(d.started||[]).map(p=>PLATFORM_LABELS[p]||p).join(', '),'info'); btn.disabled=true; startPolling(); }
+    else toast(d.error||'Could not start collection','error');
+  }catch(e){ toast('Network error — is the app running?','error'); }
+}
+function startPolling(){
+  if(pollingTimer) return;
+  pollingTimer=setInterval(async()=>{
+    await loadStats(); await loadLogs();
+    const anyRunning=PLATFORMS.some(p=>(statsData[p]||{}).scrape_status==='running');
+    if(!anyRunning){ clearInterval(pollingTimer); pollingTimer=null;
+      document.getElementById('runCollection').disabled=false;
+      loadLatest(); toast('Collection complete.','success'); }
+  },2500);
+}
+
+// ── Export ──────────────────────────────────────────────────────────────────
+function exportToday(){ window.location.href='/api/download/today'; toast('Preparing Excel export…','info'); }
+
+// ── Browser logins (phones need a signed-in session) ────────────────────────
+const LOGIN_PLATFORMS=['instagram','jiji','twitter','tiktok'];
+let loginPollTimer=null;
+async function loadLoginStatus(){ try{ const r=await fetch('/api/login/status'); renderLoginBar(await r.json()); }catch(e){} }
+function renderLoginBar(state){
+  const bar=document.getElementById('login-bar'); if(!bar) return;
+  bar.innerHTML = LOGIN_PLATFORMS.map(p=>{
+    const s=(state[p]||{}).status||'idle';
+    const label=PLATFORM_LABELS[p]||p;
+    if(s==='opening'||s==='waiting'||s==='detected'){
+      const txt = s==='detected'?'login detected…':'log in in the Chrome window';
+      return `<span class="chip-login"><i class="fa-solid fa-circle-notch fa-spin"></i> ${label}: ${txt}
+        <button class="btn btn-outline btn-sm" style="margin-left:6px;padding:4px 8px;" onclick="finishLogin('${p}')">I've logged in</button></span>`;
+    }
+    if(s==='done') return `<span class="chip-login ok"><i class="fa-solid fa-circle-check"></i> ${label} signed in</span>`;
+    return `<span class="chip-login" onclick="openLogin('${p}')"><i class="fa-solid fa-right-to-bracket"></i> Sign in to ${label}</span>`;
+  }).join('');
+}
+async function openLogin(p){
+  try{ const r=await fetch('/api/login/'+p,{method:'POST'}); const d=await r.json();
+    if(r.ok){ toast('Opening '+(PLATFORM_LABELS[p]||p)+' login window…','info'); startLoginPolling(); }
+    else toast(d.error||'Could not open login window','error');
+  }catch(e){ toast('Network error','error'); }
+}
+async function finishLogin(p){ await fetch('/api/login/'+p+'/finish',{method:'POST'}); toast('Saving '+(PLATFORM_LABELS[p]||p)+' session…','success'); setTimeout(loadLoginStatus,1500); }
+function startLoginPolling(){
+  if(loginPollTimer) return;
+  loginPollTimer=setInterval(async()=>{
+    try{ const r=await fetch('/api/login/status'); const st=await r.json(); renderLoginBar(st);
+      const active=LOGIN_PLATFORMS.some(p=>['opening','waiting','detected'].includes((st[p]||{}).status));
+      if(!active){ clearInterval(loginPollTimer); loginPollTimer=null; }
+    }catch(e){}
+  },2500);
+}
+
+// ── Business Data table ─────────────────────────────────────────────────────
+async function loadTable(){ dstate.offset=0; await fetchTable(); }
+async function fetchTable(){
+  let url=`/api/businesses?limit=${TABLE_LIMIT}&offset=${dstate.offset}`;
+  if(dstate.search) url+=`&search=${encodeURIComponent(dstate.search)}`;
+  if(dstate.platform!=='all') url+=`&platform=${dstate.platform}`;
+  let recs=[];
+  try{ const r=await fetch(url); recs=await r.json(); }catch(e){ toast('Network error','error'); return; }
+  dstate.lastCount=recs.length;
+  // client-side contact filters + sort on the current page
+  let rows=recs.slice();
+  if(dstate.phone) rows=rows.filter(r=>r.phone && r.phone.trim());
+  if(dstate.email) rows=rows.filter(r=>r.email && r.email.trim());
+  if(dstate.sort==='name') rows.sort((a,b)=>(a.business_name||'').localeCompare(b.business_name||''));
+  else if(dstate.sort==='location') rows.sort((a,b)=>(a.location||'').localeCompare(b.location||''));
+  else rows.sort((a,b)=>(b.scraped_at||'').localeCompare(a.scraped_at||''));
+
+  const tb=document.getElementById('data-body');
+  tb.innerHTML = rows.length ? rows.map(x=>`
+    <tr><td style="font-weight:600;">${esc(x.business_name)}</td>
+    <td class="mono">${esc(x.phone)||'<span class="muted">—</span>'}</td>
+    <td>${x.email?('<a href="mailto:'+esc(x.email)+'">'+esc(x.email)+'</a>'):'<span class="muted">—</span>'}</td>
+    <td>${esc(x.location)||'<span class="muted">—</span>'}</td>
+    <td>${pf(x.platform)}</td>
+    <td class="mono muted">${(x.scraped_at||'').substring(0,10)}</td>
+    <td><button class="del-btn" title="Delete record" onclick="deleteRecord('${x.platform}',${x.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')
+    : `<tr><td colspan="7" class="no-data">${(recs.length>0)
+        ? 'No records match the current filters. <a href="#" onclick="clearFilters();return false;" style="color:var(--blue);font-weight:600;">Clear filters</a>'
+        : 'No business records yet — run a collection to get started.'}</td></tr>`;
+
+  const start = recs.length ? dstate.offset+1 : 0;
+  document.getElementById('dataCount').textContent = `Showing ${start}–${dstate.offset+rows.length}${dstate.lastCount===TABLE_LIMIT?'+':''} records`;
+  document.getElementById('prevBtn').disabled = dstate.offset===0;
+  document.getElementById('nextBtn').disabled = dstate.lastCount<TABLE_LIMIT;
+}
+function pageData(dir){
+  const next=dstate.offset+dir*TABLE_LIMIT;
+  if(next<0) return;
+  dstate.offset=next; fetchTable();
+}
+function clearFilters(){
+  dstate.platform='all'; dstate.phone=false; dstate.email=false; dstate.search=''; dstate.offset=0;
+  const si=document.getElementById('searchInput'); if(si) si.value='';
+  document.getElementById('pfSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x.dataset.pf==='all'));
+  document.getElementById('fltPhone').classList.remove('active');
+  document.getElementById('fltEmail').classList.remove('active');
+  fetchTable();
+}
+async function deleteRecord(platform,id){
+  if(!confirm('Delete this record?')) return;
+  await fetch(`/api/businesses/${platform}/${id}`,{method:'DELETE'});
+  fetchTable(); loadStats();
+}
+
+// ── Scrape Logs ─────────────────────────────────────────────────────────────
+let logFilter='all';
+function statusKey(s){ return s==='success'?'ok':s==='error'?'fail':'run'; }
+function renderLogs(){
+  const map={ok:'<span class="badge b-ok">Completed</span>',fail:'<span class="badge b-fail">Failed</span>',run:'<span class="badge b-run">Running</span>'};
+  const rows=logsData.filter(l=>logFilter==='all'||statusKey(l.status)===logFilter);
+  const tb=document.getElementById('logs-body');
+  tb.innerHTML = rows.length ? rows.map(l=>`
+    <tr><td>${pf(l.platform)}</td>
+    <td class="mono muted">${(l.started_at||'').substring(0,16).replace('T',' ')}</td>
+    <td>${map[statusKey(l.status)]}${l.error_message?` <span class="muted" style="font-size:11px;">${esc(l.error_message)}</span>`:''}</td>
+    <td class="num mono">${(l.count_new||0).toLocaleString()}</td></tr>`).join('')
+    : `<tr><td colspan="4" class="no-data">No logs yet.</td></tr>`;
+}
+
+// ── Settings ────────────────────────────────────────────────────────────────
+async function loadSettings(){
+  try{
+    const r=await fetch('/api/settings'); const d=await r.json();
+    document.getElementById('set-apikey').value=d.firecrawl_api_key||'';
+    document.getElementById('set-limit').value=d.daily_limit||'40';
+    document.getElementById('set-hour').value=String(d.schedule_hour||'8').padStart(2,'0');
+    document.getElementById('set-min').value=String(d.schedule_minute||'0').padStart(2,'0');
+    // platform enable toggles
+    const disabled=(d.disabled_platforms||'').split(',').map(s=>s.trim()).filter(Boolean);
+    document.querySelectorAll('.sw[data-platform]').forEach(sw=>sw.classList.toggle('on', !disabled.includes(sw.dataset.platform)));
+    // automation toggle
+    const auto=document.getElementById('autoSw');
+    if(auto) auto.classList.toggle('on', String(d.automation_enabled||'1')==='1');
+  }catch(e){}
+  loadScheduleInfo();
+}
+async function saveSettings(){
+  const disabled=[];
+  document.querySelectorAll('.sw[data-platform]').forEach(sw=>{ if(!sw.classList.contains('on')) disabled.push(sw.dataset.platform); });
+  const payload={
+    firecrawl_api_key:document.getElementById('set-apikey').value.trim(),
+    daily_limit:document.getElementById('set-limit').value,
+    schedule_hour:String(parseInt(document.getElementById('set-hour').value||'8',10)),
+    schedule_minute:String(parseInt(document.getElementById('set-min').value||'0',10)),
+    disabled_platforms:disabled.join(','),
+    automation_enabled:document.getElementById('autoSw').classList.contains('on')?'1':'0',
+  };
+  try{
+    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.ok){ toast('Settings saved.','success'); loadScheduleInfo(); }
+    else toast('Failed to save settings','error');
+  }catch(e){ toast('Network error','error'); }
+}
+async function loadScheduleInfo(){
+  try{
+    const r=await fetch('/api/schedule'); const d=await r.json();
+    const h=String(d.hour).padStart(2,'0'), m=String(d.minute).padStart(2,'0');
+    document.getElementById('sidebar-schedule').textContent=`Scheduled ${h}:${m} EAT`;
+    let nr='—';
+    if(d.next_run){ const dt=new Date(d.next_run); if(!isNaN(dt)) nr=dt.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}); }
+    document.getElementById('sidebar-nextrun').textContent=nr;
+    const sn=document.getElementById('set-nextrun'); if(sn) sn.textContent=nr;
+  }catch(e){}
+}
+function toggleAdv(){document.getElementById('adv').classList.toggle('open');document.getElementById('advBody').classList.toggle('open');}
+
+// ── Toolbar wiring ──────────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input',e=>{dstate.search=e.target.value;dstate.offset=0;fetchTable();});
+document.getElementById('sortSel').addEventListener('change',e=>{dstate.sort=e.target.value;fetchTable();});
+document.getElementById('pfSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  document.getElementById('pfSeg').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); dstate.platform=b.dataset.pf; dstate.offset=0; fetchTable();
+}));
+document.getElementById('fltPhone').addEventListener('click',function(){this.classList.toggle('active');dstate.phone=this.classList.contains('active');fetchTable();});
+document.getElementById('fltEmail').addEventListener('click',function(){this.classList.toggle('active');dstate.email=this.classList.contains('active');fetchTable();});
+document.getElementById('logSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  document.getElementById('logSeg').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); logFilter=b.dataset.log; renderLogs();
+}));
+document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>s.classList.toggle('on')));
+
+// ── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg,type='info'){
+  const wrap=document.getElementById('toast-wrap');
+  const el=document.createElement('div'); el.className=`toast ${type}`;
+  const icons={success:'fa-circle-check',error:'fa-circle-exclamation',info:'fa-circle-info'};
+  el.innerHTML=`<i class="fa-solid ${icons[type]||'fa-circle-info'}"></i> ${msg}`;
+  wrap.appendChild(el); setTimeout(()=>el.remove(),4000);
+}
+function refreshAll(){ loadStats(); loadLogs(); loadLatest(); loadLoginStatus(); }
+
+// ── Theme (light / dark) ─────────────────────────────────────────────────────
+function applyTheme(t){
+  document.body.classList.toggle('dark', t==='dark');
+  const i=document.querySelector('#themeToggle i');
+  if(i) i.className = (t==='dark') ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+}
+function initTheme(){
+  let t='light';
+  try{ t=localStorage.getItem('bsa-theme')||'light'; }catch(e){}
+  applyTheme(t);
+}
+function toggleTheme(){
+  const next = document.body.classList.contains('dark') ? 'light' : 'dark';
+  try{ localStorage.setItem('bsa-theme', next); }catch(e){}
+  applyTheme(next);
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  initTheme();
+  loadStats(); loadLogs(); loadLatest(); loadScheduleInfo(); loadLoginStatus();
+  setInterval(()=>{
+    const anyRunning=PLATFORMS.some(p=>(statsData[p]||{}).scrape_status==='running');
+    if(anyRunning){ loadStats(); loadLogs(); }
+  },5000);
+  setInterval(loadStats,30000);
+});
+</script>
+</body>
+</html>
