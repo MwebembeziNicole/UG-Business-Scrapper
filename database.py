@@ -143,8 +143,10 @@ def insert_business(platform: str, business: dict) -> bool:
     facebook   = (business.get("facebook") or "").strip()
     source_url = (business.get("source_url") or "").strip()
 
-    # Need at least one identifying/contact field
-    if not (phone or username or email):
+    # Need at least one identifying/contact field. For directory sites like
+    # Yellow Pages (no phone/username, often no email) the listing's source_url
+    # is the stable identifier, so accept it too.
+    if not (phone or username or email or source_url):
         return False
 
     conn = get_connection()

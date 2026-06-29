@@ -282,7 +282,7 @@
 
       <div class="notice">
         <i class="fa-solid fa-shield-halved notice-ic"></i>
-        <div class="notice-txt"><b>Browser sessions.</b> Sign in once — the session is saved for future collections.</div>
+        <div class="notice-txt"><b>Browser sessions.</b> Sign in to each platform to collect phone numbers.</div>
         <div class="notice-actions" id="login-bar"></div>
       </div>
 
@@ -615,7 +615,7 @@ function startPolling(){
 function exportToday(){ window.location.href='/api/download/today'; toast('Preparing Excel export…','info'); }
 
 // ── Browser logins (phones need a signed-in session) ────────────────────────
-const LOGIN_PLATFORMS=['instagram','jiji','twitter','tiktok'];
+const LOGIN_PLATFORMS=['instagram','jiji','yellowpages','twitter','tiktok'];
 let loginPollTimer=null;
 async function loadLoginStatus(){ try{ const r=await fetch('/api/login/status'); renderLoginBar(await r.json()); }catch(e){} }
 function renderLoginBar(state){

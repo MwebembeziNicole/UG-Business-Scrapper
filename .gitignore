@@ -48,3 +48,8 @@ templates/dashboard_OLD_backup.html
 
 # VS Code
 .vscode/
+
+# SQLite
+*.db
+*.db-wal
+*.db-shm

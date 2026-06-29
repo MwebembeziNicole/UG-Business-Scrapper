@@ -176,7 +176,9 @@ def insert_business(platform: str, business: dict) -> bool:
     facebook   = (business.get("facebook") or "").strip()
     source_url = (business.get("source_url") or "").strip()
 
-    if not (phone or username or email):
+    # source_url is the stable identifier for directory listings (Yellow Pages
+    # has no phone/username and often no email), so accept it too.
+    if not (phone or username or email or source_url):
         return False
 
     conn = get_connection()

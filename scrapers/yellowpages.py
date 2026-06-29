@@ -150,32 +150,24 @@ def parse_listings(html: str) -> List[Dict]:
         if em:
             email = em.group(0).lower()
 
-        # Phone — best effort: most YP listings have none, but capture any
-        # Ugandan mobile number that appears in the card text.
-        phone = ""
-        pm = PHONE_RE.search(card_text)
-        if pm:
-            phone = re.sub(r"[\s\-]+", " ", pm.group(0)).strip()
-
-        # Website / Facebook anchors
-        website, facebook = "", ""
+        # Per Nicole's request, Yellow Pages collects only name, email,
+        # location and website — no phone (the site has none) and no Facebook.
+        website = ""
         for link in card.find_all("a", href=True):
-            lhref = link["href"]
             ltext = _clean(link.get_text()).lower()
-            if "facebook.com" in lhref.lower() and not facebook:
-                facebook = lhref
-            elif ltext == "website" and not website:
-                website = lhref
+            if ltext == "website" and not website:
+                website = link["href"]
+                break
 
         location = _extract_address(card_text)
 
         results.append({
             "business_name": name[:120],
             "username":      "",
-            "phone":         phone,
+            "phone":         "",
             "email":         email,
             "website":       website,
-            "facebook":      facebook,
+            "facebook":      "",
             "category":      category or "Yellow Pages",
             "location":      location or "Uganda",
             "source_url":    url,

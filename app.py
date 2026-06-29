@@ -106,12 +106,13 @@ SCRAPER_MAP = {
 # VISIBLE Chrome window bound to the platform's persistent profile so the user
 # logs in once; the session then persists for all future scrapes.
 
-LOGIN_PLATFORMS = ["instagram", "jiji", "twitter", "tiktok"]
+LOGIN_PLATFORMS = ["instagram", "jiji", "yellowpages", "twitter", "tiktok"]
 LOGIN_URLS = {
-    "instagram": "https://www.instagram.com/accounts/login/",
-    "jiji":      "https://jiji.ug/login",
-    "twitter":   "https://x.com/login",
-    "tiktok":    "https://www.tiktok.com/login",
+    "instagram":   "https://www.instagram.com/accounts/login/",
+    "jiji":        "https://jiji.ug/login",
+    "yellowpages": "https://www.yellowpages-uganda.com/login",
+    "twitter":     "https://x.com/login",
+    "tiktok":      "https://www.tiktok.com/login",
 }
 login_state: dict = {p: {"status": "idle", "error": None} for p in LOGIN_PLATFORMS}
 _login_events: dict = {}
@@ -147,6 +148,9 @@ def _run_login(platform: str):
                             and "/challenge" not in cur)
             elif platform == "jiji":
                 detected = ("jiji.ug" in cur
+                            and "/login" not in cur and "/signin" not in cur)
+            elif platform == "yellowpages":
+                detected = ("yellowpages-uganda.com" in cur
                             and "/login" not in cur and "/signin" not in cur)
             if detected:
                 login_state[platform]["status"] = "detected"
