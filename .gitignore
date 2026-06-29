@@ -53,3 +53,4 @@ templates/dashboard_OLD_backup.html
 *.db
 *.db-wal
 *.db-shm
+.fuse_hidden*

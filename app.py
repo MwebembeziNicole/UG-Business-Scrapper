@@ -178,7 +178,11 @@ def _run_scrape(platform: str):
     api_key = db.get_setting("firecrawl_api_key", "")
     limit   = int(db.get_setting("daily_limit", 40))
 
-    if not api_key:
+    # Yellow Pages reads the site directly over HTTP and does NOT use Firecrawl,
+    # so a missing/expired API key must not block it.
+    NO_KEY_PLATFORMS = {"yellowpages"}
+
+    if not api_key and platform not in NO_KEY_PLATFORMS:
         scrape_status[platform]["status"] = "error"
         scrape_status[platform]["error"]  = "Firecrawl API key not configured."
         return

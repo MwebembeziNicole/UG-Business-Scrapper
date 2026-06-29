@@ -3,8 +3,10 @@ import os
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uganda_businesses.db")
-PLATFORMS = ["jiji", "instagram", "yellowpages", "twitter", "tiktok"]
+import config
+
+DB_PATH = config.SQLITE_DB_PATH
+PLATFORMS = config.PLATFORMS
 
 
 def get_connection():
