@@ -22,21 +22,22 @@ import psycopg2
 import psycopg2.extras
 from werkzeug.security import generate_password_hash, check_password_hash
 
-PLATFORMS = ["jiji", "instagram", "yellowpages", "twitter", "tiktok"]
+import config
+
+PLATFORMS = config.PLATFORMS
 
 
 # ── Connection ────────────────────────────────────────────────────────────────
 
 def _conn_kwargs():
-    url = os.environ.get("DATABASE_URL")
-    if url:
-        return {"dsn": url}
+    if config.DATABASE_URL:
+        return {"dsn": config.DATABASE_URL}
     return {
-        "host":     os.environ.get("PGHOST", "localhost"),
-        "port":     os.environ.get("PGPORT", "5432"),
-        "dbname":   os.environ.get("PGDATABASE", "uganda_businesses"),
-        "user":     os.environ.get("PGUSER", "postgres"),
-        "password": os.environ.get("PGPASSWORD", ""),
+        "host":     config.DB_HOST,
+        "port":     config.DB_PORT,
+        "dbname":   config.DB_NAME,
+        "user":     config.DB_USER,
+        "password": config.DB_PASSWORD,
     }
 
 
@@ -149,15 +150,16 @@ def init_db():
             )
         """)
 
-    # Default settings (only inserted once)
+    # Default settings (only inserted once). Values come from config.py; the
+    # Firecrawl key is read from the environment, not hardcoded here.
     c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING",
-              ("firecrawl_api_key", "fc-7a5a845f96e545f5b7a10a0b3b09a7d3"))
+              ("firecrawl_api_key", config.FIRECRAWL_API_KEY))
     c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING",
-              ("daily_limit", "40"))
+              ("daily_limit", str(config.DAILY_LIMIT_DEFAULT)))
     c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING",
-              ("schedule_hour", "8"))
+              ("schedule_hour", str(config.SCHEDULE_HOUR_DEFAULT)))
     c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING",
-              ("schedule_minute", "0"))
+              ("schedule_minute", str(config.SCHEDULE_MINUTE_DEFAULT)))
 
     conn.commit()
     conn.close()

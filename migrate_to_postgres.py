@@ -15,9 +15,10 @@ on natural keys.
 import os
 import sqlite3
 
+import config
 import database_pg as pg
 
-SQLITE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uganda_businesses.db")
+SQLITE_PATH = config.SQLITE_DB_PATH
 
 
 def _sqlite():

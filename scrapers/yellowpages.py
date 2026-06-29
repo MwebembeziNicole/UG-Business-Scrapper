@@ -36,9 +36,11 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+import config
+
 logger = logging.getLogger(__name__)
 
-BASE = "https://www.yellowpages-uganda.com"
+BASE = config.YP_BASE_URL
 LOCATION_URL = BASE + "/location"
 HEADERS = {
     "User-Agent": (
@@ -52,9 +54,9 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 # Ugandan mobile number in their description/address. This best-effort regex
 # captures those when present (no login, no extra requests).
 PHONE_RE = re.compile(r"(?:\+?256|0)[\s\-]?7\d{2}[\s\-]?\d{3}[\s\-]?\d{3}")
-MAX_PAGES_PER_CATEGORY = 60          # safety cap
-REQUEST_TIMEOUT = 30
-DELAY = 1.0                          # polite delay between requests
+MAX_PAGES_PER_CATEGORY = config.YP_MAX_PAGES_PER_CATEGORY   # safety cap
+REQUEST_TIMEOUT = config.YP_REQUEST_TIMEOUT
+DELAY = config.YP_REQUEST_DELAY                             # polite delay between requests
 
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────

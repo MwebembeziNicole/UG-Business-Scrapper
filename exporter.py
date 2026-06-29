@@ -9,7 +9,9 @@ from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-EXPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exports")
+import config
+
+EXPORTS_DIR = config.EXPORTS_DIR
 os.makedirs(EXPORTS_DIR, exist_ok=True)
 
 PLATFORM_COLORS = {
@@ -136,7 +138,7 @@ def export_all(records_by_platform: dict) -> str:
 # many businesses are brand-new. Re-running on the same day overwrites that day's
 # file, so there is always exactly one current daily list to export.
 
-DAILY_DIR = os.path.join(EXPORTS_DIR, "daily")
+DAILY_DIR = config.DAILY_EXPORTS_DIR
 
 
 def _today_str() -> str:

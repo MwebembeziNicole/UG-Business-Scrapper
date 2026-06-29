@@ -123,12 +123,20 @@ def init_db():
             )
         """)
 
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('firecrawl_api_key', 'fc-7a5a845f96e545f5b7a10a0b3b09a7d3')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('daily_limit', '40')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_hour', '8')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_minute', '0')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('automation_enabled', '1')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('disabled_platforms', '')")
+    # Default settings seeded once. Values come from config.py (the Firecrawl key
+    # is read from the environment, not hardcoded here).
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('firecrawl_api_key', ?)",
+              (config.FIRECRAWL_API_KEY,))
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('daily_limit', ?)",
+              (str(config.DAILY_LIMIT_DEFAULT),))
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_hour', ?)",
+              (str(config.SCHEDULE_HOUR_DEFAULT),))
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_minute', ?)",
+              (str(config.SCHEDULE_MINUTE_DEFAULT),))
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('automation_enabled', ?)",
+              (str(config.AUTOMATION_ENABLED_DEFAULT),))
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('disabled_platforms', ?)",
+              (config.DISABLED_PLATFORMS_DEFAULT,))
 
     conn.commit()
     conn.close()

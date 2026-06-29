@@ -28,11 +28,12 @@ import time
 import logging
 from typing import List
 
+import config
+
 logger = logging.getLogger(__name__)
 
 # ── Profile storage ───────────────────────────────────────────────────────────
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROFILE_ROOT = os.path.join(_PROJECT_ROOT, "browser_profiles")
+PROFILE_ROOT = config.BROWSER_PROFILE_DIR
 
 
 def profile_dir(name: str) -> str:
@@ -65,12 +66,12 @@ def build_driver(profile_name: str, headless: bool = False):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1320,920")
+        options.add_argument(f"--window-size={config.BROWSER_WINDOW_SIZE}")
         options.add_argument("--start-maximized")
         if headless:
             options.add_argument("--headless=new")
         driver = uc.Chrome(options=options, use_subprocess=True)
-        driver.set_page_load_timeout(45)
+        driver.set_page_load_timeout(config.BROWSER_PAGE_LOAD_TIMEOUT)
         logger.info("[Browser] undetected-chromedriver OK  profile=%s", profile_name)
         return driver
     except ImportError:
@@ -94,7 +95,7 @@ def build_driver(profile_name: str, headless: bool = False):
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--disable-gpu")
-    opts.add_argument("--window-size=1320,920")
+    opts.add_argument(f"--window-size={config.BROWSER_WINDOW_SIZE}")
     if headless:
         opts.add_argument("--headless=new")
     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -111,7 +112,7 @@ def build_driver(profile_name: str, headless: bool = False):
         )
     except Exception:
         pass
-    driver.set_page_load_timeout(45)
+    driver.set_page_load_timeout(config.BROWSER_PAGE_LOAD_TIMEOUT)
     logger.info("[Browser] plain selenium webdriver  profile=%s", profile_name)
     return driver
 

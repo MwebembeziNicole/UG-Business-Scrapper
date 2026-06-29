@@ -33,6 +33,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from .browser import build_driver, phones_from_text, clean_phone
 from . import queries as Q
 
+import config
+
 logger = logging.getLogger(__name__)
 
 PROFILE = "jiji"
@@ -90,7 +92,7 @@ UG_CITIES = [
     "Rubaga", "Bunga", "Kyambogo",
 ]
 
-MAX_PAGES_PER_CATEGORY = 10
+MAX_PAGES_PER_CATEGORY = config.JIJI_MAX_PAGES_PER_CATEGORY
 
 
 def _daily_seed() -> int:

@@ -12,10 +12,12 @@ import os
 # Ensure the app directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import config
 from app import create_app
 
-PORT = 5050
-URL  = f"http://127.0.0.1:{PORT}"
+HOST = config.HOST
+PORT = config.PORT
+URL  = f"http://{HOST}:{PORT}"
 
 
 def _open_browser():
@@ -35,4 +37,4 @@ if __name__ == "__main__":
     threading.Thread(target=_open_browser, daemon=True).start()
 
     app = create_app()
-    app.run(host="127.0.0.1", port=PORT, debug=False, use_reloader=False)
+    app.run(host=HOST, port=PORT, debug=False, use_reloader=False)

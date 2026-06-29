@@ -13,11 +13,13 @@ from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
 
+import config
+
 # Database backend chosen automatically:
 #   • PostgreSQL when configured (DATABASE_URL or PG* env vars are set) — your Windows box
 #   • plain SQLite file otherwise — e.g. a colleague's Mac, no DB server needed
-# Same code runs on both with no edits.
-if os.environ.get("DATABASE_URL") or os.environ.get("PGDATABASE") or os.environ.get("PGHOST"):
+# Same code runs on both with no edits. (Resolved once in config.USE_POSTGRES.)
+if config.USE_POSTGRES:
     import database_pg as db
 else:
     import database as db
@@ -32,9 +34,9 @@ from scrapers.tiktok      import scrape_tiktok,  discover_tiktok,  scrape_tiktok
 
 # ─── App setup ────────────────────────────────────────────────────────────────
 
-app       = Flask(__name__, template_folder="templates")
+app       = Flask(__name__, template_folder=config.TEMPLATE_FOLDER)
 CORS(app)
-scheduler = BackgroundScheduler(timezone="Africa/Kampala")
+scheduler = BackgroundScheduler(timezone=config.SCHEDULER_TIMEZONE)
 
 # ─── Authentication (Flask-Login; single login type, SSO-ready later) ──────────
 
@@ -57,7 +59,7 @@ def load_user(user_id):
 
 def _get_secret_key():
     """Stable session secret: env var if set, else generated once and stored."""
-    key = os.environ.get("FLASK_SECRET_KEY")
+    key = config.FLASK_SECRET_KEY
     if key:
         return key
     key = db.get_setting("flask_secret_key", "")
@@ -83,7 +85,7 @@ def _require_login():
 
 # Scrape status tracker  {platform: {status, progress, total, log_id, error}}
 scrape_status: dict = {
-    p: {"status": "idle", "progress": 0, "total": 40, "log_id": None, "error": None}
+    p: {"status": "idle", "progress": 0, "total": config.DAILY_LIMIT_DEFAULT, "log_id": None, "error": None}
     for p in db.PLATFORMS
 }
 
@@ -176,7 +178,7 @@ def _run_login(platform: str):
 def _run_scrape(platform: str):
     """Execute a scrape job in a background thread."""
     api_key = db.get_setting("firecrawl_api_key", "")
-    limit   = int(db.get_setting("daily_limit", 40))
+    limit   = int(db.get_setting("daily_limit", config.DAILY_LIMIT_DEFAULT))
 
     # Yellow Pages reads the site directly over HTTP and does NOT use Firecrawl,
     # so a missing/expired API key must not block it.
@@ -209,7 +211,7 @@ def _run_scrape(platform: str):
             else:
                 skipped += 1
 
-        all_records = db.get_businesses(platform=platform, limit=5000)
+        all_records = db.get_businesses(platform=platform, limit=config.BUSINESS_QUERY_LIMIT)
         exporter.export_platform(platform, all_records)
 
         db.finish_log(log_id, new_count, skipped)
@@ -224,7 +226,7 @@ def _run_scrape(platform: str):
 
 def _enabled_platforms():
     """Platforms NOT switched off in Settings -> Enabled Platforms."""
-    raw = db.get_setting("disabled_platforms", "") or ""
+    raw = db.get_setting("disabled_platforms", config.DISABLED_PLATFORMS_DEFAULT) or ""
     disabled = {p.strip() for p in raw.split(",") if p.strip()}
     return [p for p in db.PLATFORMS if p not in disabled]
 
@@ -235,7 +237,7 @@ def _write_daily_snapshot():
     today = datetime.now().date().isoformat()
     today_by_platform: dict = {}
     for p in db.PLATFORMS:
-        recs = db.get_businesses(platform=p, limit=5000)
+        recs = db.get_businesses(platform=p, limit=config.BUSINESS_QUERY_LIMIT)
         today_by_platform[p] = [r for r in recs if str(r.get("scraped_at", "")).startswith(today)]
     try:
         path = exporter.export_daily(today_by_platform, today_by_platform)
@@ -246,7 +248,7 @@ def _write_daily_snapshot():
 
 def _run_all_platforms():
     """Scheduled job: scrape ENABLED platforms (if automation on), then snapshot."""
-    if str(db.get_setting("automation_enabled", "1")) != "1":
+    if str(db.get_setting("automation_enabled", config.AUTOMATION_ENABLED_DEFAULT)) != "1":
         print("[Scheduler] Automatic collection is OFF — skipping daily run.")
         return
     print("[Scheduler] Daily collection starting ...")
@@ -287,7 +289,7 @@ def _run_jiji_discover():
 def _run_jiji_scrape_queued():
     """Phase 2 for Jiji: scrape queued listings for phone/details."""
     api_key = db.get_setting("firecrawl_api_key", "")
-    limit   = int(db.get_setting("daily_limit", 40))
+    limit   = int(db.get_setting("daily_limit", config.DAILY_LIMIT_DEFAULT))
     queued  = db.get_jiji_queue(only_unscraped=True)
 
     if not queued:
@@ -319,7 +321,7 @@ def _run_jiji_scrape_queued():
 
         db.mark_jiji_scraped(scraped_urls)
 
-        all_records = db.get_businesses(platform="jiji", limit=5000)
+        all_records = db.get_businesses(platform="jiji", limit=config.BUSINESS_QUERY_LIMIT)
         exporter.export_platform("jiji", all_records)
 
         db.finish_log(log_id, new_count, skipped)
@@ -361,7 +363,7 @@ def _run_ig_discover():
 def _run_ig_scrape_queued():
     """Phase 2 for Instagram: scrape queued profiles via imginn/picuki."""
     api_key = db.get_setting("firecrawl_api_key", "")
-    limit   = int(db.get_setting("daily_limit", 40))
+    limit   = int(db.get_setting("daily_limit", config.DAILY_LIMIT_DEFAULT))
     queued  = db.get_ig_queue(only_unscraped=True)
 
     if not queued:
@@ -393,7 +395,7 @@ def _run_ig_scrape_queued():
 
         db.mark_ig_scraped(scraped_usernames)
 
-        all_records = db.get_businesses(platform="instagram", limit=5000)
+        all_records = db.get_businesses(platform="instagram", limit=config.BUSINESS_QUERY_LIMIT)
         exporter.export_platform("instagram", all_records)
 
         db.finish_log(log_id, new_count, skipped)
@@ -428,7 +430,7 @@ def _run_profile_discover(platform, discover_fn, queue_fn, status_dict, target=1
 
 def _run_profile_scrape_queued(platform, scrape_fn, get_queue_fn, mark_fn):
     api_key = db.get_setting("firecrawl_api_key", "")
-    limit   = int(db.get_setting("daily_limit", 40))
+    limit   = int(db.get_setting("daily_limit", config.DAILY_LIMIT_DEFAULT))
     queued  = get_queue_fn(only_unscraped=True)
 
     if not queued:
@@ -456,7 +458,7 @@ def _run_profile_scrape_queued(platform, scrape_fn, get_queue_fn, mark_fn):
             done_users.append(record.get("username", ""))
 
         mark_fn(done_users)
-        exporter.export_platform(platform, db.get_businesses(platform=platform, limit=5000))
+        exporter.export_platform(platform, db.get_businesses(platform=platform, limit=config.BUSINESS_QUERY_LIMIT))
         db.finish_log(log_id, new_count, skipped)
         scrape_status[platform].update(status="done", progress=new_count, total=limit)
         print(f"[{platform}] Phase 2 done: {new_count} new | {skipped} skipped")
@@ -480,8 +482,8 @@ def _run_tiktok_scrape_queued():
 
 
 def _setup_scheduler():
-    hour   = int(db.get_setting("schedule_hour",   8))
-    minute = int(db.get_setting("schedule_minute", 0))
+    hour   = int(db.get_setting("schedule_hour",   config.SCHEDULE_HOUR_DEFAULT))
+    minute = int(db.get_setting("schedule_minute", config.SCHEDULE_MINUTE_DEFAULT))
     scheduler.add_job(
         _run_all_platforms,
         trigger="cron",
@@ -748,7 +750,7 @@ def api_download(platform):
         return jsonify({"error": "Unknown platform"}), 400
     latest = exporter.get_latest_export(platform)
     if not latest:
-        records = db.get_businesses(platform=platform, limit=5000)
+        records = db.get_businesses(platform=platform, limit=config.BUSINESS_QUERY_LIMIT)
         latest  = exporter.export_platform(platform, records)
     return send_file(
         latest,
@@ -763,7 +765,7 @@ def api_download_today():
     """Always regenerate today's snapshot from the DB so it reflects current data."""
     today = datetime.now().date().isoformat()
     today_by_platform = {
-        p: [r for r in db.get_businesses(platform=p, limit=5000)
+        p: [r for r in db.get_businesses(platform=p, limit=config.BUSINESS_QUERY_LIMIT)
             if str(r.get("scraped_at", "")).startswith(today)]
         for p in db.PLATFORMS
     }
@@ -778,7 +780,7 @@ def api_download_today():
 
 @app.route("/api/download/all/combined")
 def api_download_all():
-    records_by_platform = {p: db.get_businesses(platform=p, limit=5000) for p in db.PLATFORMS}
+    records_by_platform = {p: db.get_businesses(platform=p, limit=config.BUSINESS_QUERY_LIMIT) for p in db.PLATFORMS}
     filepath = exporter.export_all(records_by_platform)
     return send_file(
         filepath,
@@ -813,12 +815,12 @@ def api_logs():
 def api_settings():
     if request.method == "GET":
         return jsonify({
-            "firecrawl_api_key":  db.get_setting("firecrawl_api_key", ""),
-            "daily_limit":        db.get_setting("daily_limit", "40"),
-            "schedule_hour":      db.get_setting("schedule_hour", "8"),
-            "schedule_minute":    db.get_setting("schedule_minute", "0"),
-            "automation_enabled": db.get_setting("automation_enabled", "1"),
-            "disabled_platforms": db.get_setting("disabled_platforms", ""),
+            "firecrawl_api_key":  db.get_setting("firecrawl_api_key", config.FIRECRAWL_API_KEY),
+            "daily_limit":        db.get_setting("daily_limit", str(config.DAILY_LIMIT_DEFAULT)),
+            "schedule_hour":      db.get_setting("schedule_hour", str(config.SCHEDULE_HOUR_DEFAULT)),
+            "schedule_minute":    db.get_setting("schedule_minute", str(config.SCHEDULE_MINUTE_DEFAULT)),
+            "automation_enabled": db.get_setting("automation_enabled", config.AUTOMATION_ENABLED_DEFAULT),
+            "disabled_platforms": db.get_setting("disabled_platforms", config.DISABLED_PLATFORMS_DEFAULT),
         })
     data = request.get_json() or {}
     for key in ["firecrawl_api_key", "daily_limit", "schedule_hour", "schedule_minute",
@@ -833,8 +835,8 @@ def api_settings():
 def api_schedule():
     job = scheduler.get_job("daily_scrape")
     return jsonify({
-        "hour":     db.get_setting("schedule_hour", "8"),
-        "minute":   db.get_setting("schedule_minute", "0"),
+        "hour":     db.get_setting("schedule_hour", str(config.SCHEDULE_HOUR_DEFAULT)),
+        "minute":   db.get_setting("schedule_minute", str(config.SCHEDULE_MINUTE_DEFAULT)),
         "next_run": str(job.next_run_time) if job else None,
         "enabled":  job is not None,
     })
@@ -853,4 +855,4 @@ def create_app():
 
 
 if __name__ == "__main__":
-    create_app().run(host="127.0.0.1", port=5050, debug=False)
+    create_app().run(host=config.HOST, port=config.PORT, debug=False)
