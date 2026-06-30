@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="color-scheme" content="light"/>
-<title>Sign in — Business Scraping Agent</title>
+<title>Register — Business Scraping Agent</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
   :root{ color-scheme:light; --blue:#1A43BF; --blue-dark:#163AA3; --text:#1F2937; --text-2:#6B7280; --line:#E9EDF3; --bg:#F6F8FB; }
@@ -25,12 +25,12 @@
   .btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn:hover{background:var(--blue-dark);}
   .err{background:#FBE9E9;color:#C62828;border:1px solid #f3c9c9;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
-  .note{background:#E8EEF7;color:#1A43BF;border:1px solid #d6e0ee;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
   .foot{font-size:11px;color:var(--text-2);text-align:center;margin-top:18px;}
+  .back{display:block;text-align:center;font-size:12.5px;color:var(--blue);text-decoration:none;margin-top:16px;}
 </style>
 </head>
 <body>
-  <form class="card" method="POST" action="/login">
+  <form class="card" method="POST" action="/register">
     <div class="brand">
       <div class="brand-mark"><i class="fa-solid fa-building-columns"></i></div>
       <div>
@@ -39,41 +39,26 @@
       </div>
     </div>
 
-    {% if needs_setup %}
-      <h1>Create the first account</h1>
-      <div class="sub">No accounts exist yet. Set up the first login to secure the app.</div>
-      <div class="note"><i class="fa-solid fa-circle-info"></i> Choose a username and a strong password — you'll use these to sign in.</div>
-    {% else %}
-      <h1>Sign in</h1>
-      <div class="sub">Enter your credentials to access the system.</div>
-    {% endif %}
+    <h1>Create an account</h1>
+    <div class="sub">Register with a username, email, and password.</div>
 
-    {% if notice %}<div class="note"><i class="fa-solid fa-circle-check"></i> {{ notice }}</div>{% endif %}
     {% if error %}<div class="err"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
 
     <label for="username">Username</label>
     <input class="inp" id="username" name="username" autocomplete="username" autofocus required/>
 
+    <label for="email">Email address</label>
+    <input class="inp" id="email" name="email" type="email" autocomplete="email" required/>
+
     <label for="password">Password</label>
-    <input class="inp" id="password" name="password" type="password" autocomplete="current-password" required/>
+    <input class="inp" id="password" name="password" type="password" autocomplete="new-password" required/>
 
-    {% if not needs_setup %}
-    <div style="text-align:right;margin:-8px 0 15px;">
-      <a href="/forgot-password" style="font-size:12px;color:var(--blue);text-decoration:none;">Forgot password?</a>
-    </div>
-    {% endif %}
+    <label for="password2">Confirm password</label>
+    <input class="inp" id="password2" name="password2" type="password" autocomplete="new-password" required/>
 
-    <button class="btn" type="submit">
-      {% if needs_setup %}<i class="fa-solid fa-user-plus"></i> Create account &amp; sign in{% else %}<i class="fa-solid fa-right-to-bracket"></i> Sign in{% endif %}
-    </button>
+    <button class="btn" type="submit"><i class="fa-solid fa-user-plus"></i> Register &amp; sign in</button>
 
-    {% if not needs_setup %}
-    <div style="text-align:center;font-size:12.5px;color:var(--text-2);margin-top:16px;">
-      Don't have an account?
-      <a href="/register" style="color:var(--blue);text-decoration:none;font-weight:600;">Register</a>
-    </div>
-    {% endif %}
-
+    <a class="back" href="/login"><i class="fa-solid fa-arrow-left"></i> Back to sign in</a>
     <div class="foot">Uganda Revenue Authority · Internal use only</div>
   </form>
 </body>

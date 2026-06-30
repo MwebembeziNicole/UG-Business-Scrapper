@@ -70,7 +70,7 @@ def _get_secret_key():
 
 
 # Endpoints reachable without logging in
-_OPEN_ENDPOINTS = {"login", "static", "forgot_password", "reset_password"}
+_OPEN_ENDPOINTS = {"login", "static", "register", "forgot_password", "reset_password"}
 
 
 @app.before_request
@@ -528,6 +528,34 @@ def login():
                 return redirect(url_for("dashboard"))
             error = "Invalid username or password."
     return render_template("login.html", needs_setup=needs_setup, error=error, notice=notice)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """Self-service account creation. Captures an email so the password-reset
+    flow works. Writes to the active backend (Postgres when configured)."""
+    error = None
+    if request.method == "POST":
+        username  = request.form.get("username", "").strip()
+        email     = request.form.get("email", "").strip()
+        password  = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+        if not username or not email or not password:
+            error = "Username, email, and password are all required."
+        elif len(password) < 6:
+            error = "Password must be at least 6 characters."
+        elif password != password2:
+            error = "The two passwords do not match."
+        elif db.get_user_by_email(email):
+            error = "An account with that email already exists."
+        elif not db.create_user(username, password):
+            error = "That username is already taken."
+        else:
+            db.set_user_email(username, email)
+            u = db.get_user_by_username(username)
+            login_user(User(u["id"], u["username"]))
+            return redirect(url_for("dashboard"))
+    return render_template("register.html", error=error)
 
 
 @app.route("/forgot-password", methods=["GET", "POST"])
