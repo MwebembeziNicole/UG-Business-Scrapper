@@ -43,6 +43,58 @@ def profile_dir(name: str) -> str:
     return path
 
 
+def _clear_profile_locks(udd: str) -> None:
+    """Remove stale Chrome 'singleton' lock files left behind when a previous
+    run crashed or was force-closed. When these linger, Chrome exits instantly
+    with 'session not created: Chrome instance exited'. Safe to call before a
+    scrape, when no Chrome is using this profile (the normal case)."""
+    for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+        p = os.path.join(udd, name)
+        try:
+            if os.path.lexists(p):
+                os.remove(p)
+        except OSError:
+            pass
+
+
+def _chrome_major_version():
+    """Best-effort major version of the installed Chrome (e.g. 138), so the
+    driver can be matched to it. A driver/Chrome version mismatch is the most
+    common cause of 'Chrome instance exited'. Returns None if it can't be found."""
+    import subprocess
+
+    # Windows registry — per-user (HKCU) then machine-wide (HKLM)
+    for hive in ("HKCU", "HKLM"):
+        try:
+            out = subprocess.check_output(
+                ["reg", "query", rf"{hive}\Software\Google\Chrome\BLBeacon", "/v", "version"],
+                stderr=subprocess.DEVNULL, text=True, timeout=5,
+            )
+            m = re.search(r"version\s+REG_SZ\s+(\d+)\.", out)
+            if m:
+                return int(m.group(1))
+        except Exception:
+            pass
+
+    # chrome.exe --version on the usual install locations
+    for exe in (
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+    ):
+        try:
+            if not os.path.exists(exe):
+                continue
+            out = subprocess.check_output([exe, "--version"], stderr=subprocess.DEVNULL,
+                                          text=True, timeout=5)
+            m = re.search(r"(\d+)\.", out)
+            if m:
+                return int(m.group(1))
+        except Exception:
+            pass
+    return None
+
+
 # ── Driver factory ────────────────────────────────────────────────────────────
 
 def build_driver(profile_name: str, headless: bool = False):
@@ -56,6 +108,8 @@ def build_driver(profile_name: str, headless: bool = False):
     selenium + webdriver-manager.
     """
     udd = profile_dir(profile_name)
+    _clear_profile_locks(udd)               # recover from a crashed previous run
+    chrome_major = _chrome_major_version()  # match the driver to installed Chrome
 
     # 1) undetected-chromedriver --------------------------------------------------
     try:
@@ -70,25 +124,24 @@ def build_driver(profile_name: str, headless: bool = False):
         options.add_argument("--start-maximized")
         if headless:
             options.add_argument("--headless=new")
-        driver = uc.Chrome(options=options, use_subprocess=True)
+        uc_kwargs = {"options": options, "use_subprocess": True}
+        if chrome_major:
+            uc_kwargs["version_main"] = chrome_major   # avoid driver/Chrome mismatch
+        driver = uc.Chrome(**uc_kwargs)
         driver.set_page_load_timeout(config.BROWSER_PAGE_LOAD_TIMEOUT)
-        logger.info("[Browser] undetected-chromedriver OK  profile=%s", profile_name)
+        logger.info("[Browser] undetected-chromedriver OK  profile=%s (chrome v%s)",
+                    profile_name, chrome_major or "?")
         return driver
     except ImportError:
         logger.warning("[Browser] undetected-chromedriver not installed — using plain selenium")
     except Exception as e:
         logger.warning("[Browser] uc failed (%s) — falling back to plain selenium", e)
+        _clear_profile_locks(udd)   # uc may have left a lock behind when it crashed
 
     # 2) plain selenium -----------------------------------------------------------
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
-
-    try:
-        from webdriver_manager.chrome import ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
-    except Exception:
-        service = Service()
 
     opts = Options()
     opts.add_argument(f"--user-data-dir={udd}")
@@ -104,7 +157,19 @@ def build_driver(profile_name: str, headless: bool = False):
         "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     )
-    driver = webdriver.Chrome(service=service, options=opts)
+
+    _clear_profile_locks(udd)
+    # Prefer Selenium Manager (built into selenium ≥ 4.6): it auto-downloads the
+    # chromedriver that matches the installed Chrome, fixing the common
+    # 'Chrome instance exited' version mismatch. Fall back to webdriver-manager.
+    try:
+        driver = webdriver.Chrome(options=opts)
+    except Exception:
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
+        except Exception:
+            driver = webdriver.Chrome(service=Service(), options=opts)
     try:
         driver.execute_cdp_cmd(
             "Page.addScriptToEvaluateOnNewDocument",
