@@ -88,6 +88,15 @@
 
   /* Success (completed) state for any button — uses the app's existing green */
   .btn.is-done{background:var(--ok)!important;border-color:var(--ok)!important;color:#fff!important;filter:none;opacity:1;}
+  /* Failed state — on-theme amber, signals "try again" without alarm */
+  .btn.is-fail{background:var(--warn-bg)!important;border-color:var(--warn)!important;color:var(--warn)!important;filter:none;opacity:1;}
+  /* Status icon fades in gently — no bounce */
+  .btn.is-done i,.btn.is-fail i{animation:gentleIn .25s ease;}
+  @keyframes gentleIn{from{opacity:0;}to{opacity:1;}}
+  /* Stable widths so Save / Export text changes never shift the layout */
+  #saveBtn{min-width:154px;justify-content:center;}
+  .export-btn{justify-content:center;}
+  .export-btn.btn-lg{min-width:188px;}
 
   /* Primary "Run Collection": elegant light sweep on hover + while running */
   #runCollection{position:relative;overflow:hidden;}
@@ -113,6 +122,7 @@
     .btn:hover:not(:disabled),.icon-btn:hover,.btn:active:not(:disabled),.icon-btn:active{transform:none;box-shadow:none;filter:none;}
     #runCollection::after{display:none;}
     .spin-slow,.dot.pulse,.fa-spin,#runCollection.is-running::after{animation:none;}
+    .btn.is-done i,.btn.is-fail i{animation:none;}
   }
 
   .card-pad{padding:22px 24px;}
@@ -313,7 +323,7 @@
           <div class="status-meta" id="statusMeta">&nbsp;</div>
         </div>
         <div class="status-action">
-          <button class="btn btn-primary btn-lg" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+          <button class="btn btn-primary btn-lg export-btn" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
         </div>
       </div>
 
@@ -363,7 +373,7 @@
     <section class="section" id="section-data">
       <div class="page-head">
         <div><div class="page-title">Business Data</div><div class="page-sub">Review every collected business record, then export to Excel.</div></div>
-        <button class="btn btn-primary btn-lg" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+        <button class="btn btn-primary btn-lg export-btn" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
       </div>
       <div class="toolbar">
         <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by business name, phone number, email, or location"/></div>
@@ -422,7 +432,7 @@
     <section class="section" id="section-settings">
       <div class="page-head">
         <div><div class="page-title">Settings</div><div class="page-sub">Configure daily collection. Technical options are under Administrator Settings.</div></div>
-        <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-check"></i> Save Changes</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveSettings(this)"><i class="fa-solid fa-check"></i> Save Changes</button>
       </div>
       <div class="set-grid">
         <div class="panel" style="margin-bottom:0;">
@@ -696,29 +706,48 @@ function startPolling(){
       } else {
         btn.disabled=false;
       }
+      resetExportButtons();   // fresh data collected → any prior export is now stale
       loadLatest(); toast('Collection complete.','success'); }
   },2500);
 }
 
 // ── Export ──────────────────────────────────────────────────────────────────
-function exportToday(btn){
+async function exportToday(btn){
   if(btn){
     if(btn.dataset.orig===undefined) btn.dataset.orig=btn.innerHTML;
     btn.disabled=true;
-    btn.classList.remove('is-done');
+    btn.classList.remove('is-done','is-fail');
     btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Exporting…';
-    setTimeout(()=>{
-      btn.classList.add('is-done');
-      btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Excel Exported';
-      setTimeout(()=>{
-        btn.classList.remove('is-done');
-        btn.disabled=false;
-        btn.innerHTML=btn.dataset.orig;
-      },1600);
-    },900);
   }
-  window.location.href='/api/download/today';
-  toast('Preparing Excel export…','info');
+  try{
+    const r=await fetch('/api/download/today');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const blob=await r.blob();
+    // Filename from the response if provided, else a sensible default.
+    const cd=r.headers.get('Content-Disposition')||'';
+    const m=cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    const fname=m?decodeURIComponent(m[1]):'businesses.xlsx';
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    // Persisted "Excel Exported" — stays until a new scrape changes the data.
+    if(btn){ btn.classList.add('is-done'); btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Excel Exported'; }
+    toast('Excel exported.','success');
+  }catch(e){
+    if(btn){ btn.classList.add('is-fail'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Export Failed'; }
+    toast('Export failed — please try again.','error');
+  }
+}
+// New scrape data makes any prior export stale → return Export buttons to default.
+function resetExportButtons(){
+  document.querySelectorAll('.export-btn').forEach(b=>{
+    if(b.dataset.orig!==undefined){
+      b.classList.remove('is-done','is-fail');
+      b.disabled=false;
+      b.innerHTML=b.dataset.orig;
+    }
+  });
 }
 
 // ── Browser logins (phones need a signed-in session) ────────────────────────
@@ -842,7 +871,15 @@ async function loadSettings(){
   }catch(e){}
   loadScheduleInfo();
 }
-async function saveSettings(){
+const SAVE_BTN_DEFAULT = '<i class="fa-solid fa-check"></i> Save Changes';
+async function saveSettings(btn){
+  btn = btn || document.getElementById('saveBtn');
+  if(btn){
+    if(btn.dataset.orig===undefined) btn.dataset.orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.classList.remove('is-done','is-fail');
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+  }
   const disabled=[];
   document.querySelectorAll('.sw[data-platform]').forEach(sw=>{ if(!sw.classList.contains('on')) disabled.push(sw.dataset.platform); });
   const payload={
@@ -855,9 +892,29 @@ async function saveSettings(){
   };
   try{
     const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(r.ok){ toast('Settings saved.','success'); loadScheduleInfo(); }
-    else toast('Failed to save settings','error');
-  }catch(e){ toast('Network error','error'); }
+    if(r.ok){
+      toast('Settings saved.','success'); loadScheduleInfo();
+      // Persisted "Saved" state — stays until the user edits a field (see markSettingsDirty).
+      if(btn){ btn.classList.add('is-done'); btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Saved'; }
+    } else {
+      toast('Failed to save settings','error');
+      if(btn){ btn.classList.add('is-fail'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Save Failed'; }
+    }
+  }catch(e){
+    toast('Network error','error');
+    if(btn){ btn.classList.add('is-fail'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Save Failed'; }
+  }
+}
+// When any setting is edited after a save, return the button to "Save Changes"
+// to signal there are unsaved changes again.
+function markSettingsDirty(){
+  const btn=document.getElementById('saveBtn');
+  if(!btn || btn.dataset.orig===undefined) return;
+  if(btn.classList.contains('is-done') || btn.classList.contains('is-fail')){
+    btn.classList.remove('is-done','is-fail');
+    btn.disabled=false;
+    btn.innerHTML=btn.dataset.orig||SAVE_BTN_DEFAULT;
+  }
 }
 async function loadScheduleInfo(){
   try{
@@ -885,7 +942,12 @@ document.getElementById('logSeg').querySelectorAll('button').forEach(b=>b.addEve
   document.getElementById('logSeg').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); logFilter=b.dataset.log; renderLogs();
 }));
-document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>s.classList.toggle('on')));
+document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{ s.classList.toggle('on'); markSettingsDirty(); }));
+// Editing any settings field marks the form dirty → reverts "Saved" to "Save Changes".
+['set-apikey','set-limit','set-hour','set-min'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input', markSettingsDirty);
+});
 
 // ── Toast ───────────────────────────────────────────────────────────────────
 function toast(msg,type='info'){
