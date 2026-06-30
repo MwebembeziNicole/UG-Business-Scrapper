@@ -150,6 +150,37 @@ def user_count(*args, **kwargs):
     return _backend.user_count(*args, **kwargs)
 
 
+# Email & password reset
+def set_user_email(*args, **kwargs):
+    """Attach/update the email address on an account."""
+    return _backend.set_user_email(*args, **kwargs)
+
+
+def get_user_by_email(*args, **kwargs):
+    """Return the user dict for an email, or None."""
+    return _backend.get_user_by_email(*args, **kwargs)
+
+
+def create_password_reset_token(*args, **kwargs):
+    """Store a one-time, time-limited password-reset token."""
+    return _backend.create_password_reset_token(*args, **kwargs)
+
+
+def get_password_reset_token(*args, **kwargs):
+    """Look up a reset token row, or None."""
+    return _backend.get_password_reset_token(*args, **kwargs)
+
+
+def mark_reset_token_used(*args, **kwargs):
+    """Mark a reset token as consumed."""
+    return _backend.mark_reset_token_used(*args, **kwargs)
+
+
+def update_user_password(*args, **kwargs):
+    """Set a new hashed password for a user id."""
+    return _backend.update_user_password(*args, **kwargs)
+
+
 # ── Convenience aliases ─────────────────────────────────────────────────────────
 # Friendlier names some callers may prefer, mapped to the existing backend
 # functions. These are aliases only — they add no new behaviour and keep the

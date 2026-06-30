@@ -146,3 +146,24 @@ FLASK_SECRET_KEY = _env("FLASK_SECRET_KEY")
 
 HOST = _env("HOST", "127.0.0.1")
 PORT = _env_int("PORT", 5050)
+
+
+# ── Email / SMTP (password-reset links) ───────────────────────────────────────
+# All secrets come from the environment (.env). For Gmail use an App Password
+# (not your normal password) with SMTP_HOST=smtp.gmail.com and SMTP_PORT=587.
+SMTP_HOST     = _env("SMTP_HOST", "")
+SMTP_PORT     = _env_int("SMTP_PORT", 587)
+SMTP_USER     = _env("SMTP_USER", "")
+SMTP_PASSWORD = _env("SMTP_PASSWORD", "")
+# Sender address shown on the email; defaults to the SMTP login.
+SMTP_FROM     = _env("SMTP_FROM", SMTP_USER or "")
+# Use implicit SSL (port 465) instead of STARTTLS (port 587). Default: STARTTLS.
+SMTP_USE_SSL  = _env("SMTP_USE_SSL", "0") in ("1", "true", "True", "yes", "on")
+
+# Base URL used to build links inside emails. Must be reachable by the person
+# clicking the link. Defaults to the local dev address; set this to a LAN/host
+# address (e.g. http://192.168.1.20:5050) if others open the app over a network.
+APP_BASE_URL = _env("APP_BASE_URL", f"http://{HOST}:{PORT}")
+
+# How long a password-reset link stays valid, in minutes.
+RESET_TOKEN_TTL_MIN = _env_int("RESET_TOKEN_TTL_MIN", 60)

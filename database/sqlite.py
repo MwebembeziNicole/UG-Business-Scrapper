@@ -87,6 +87,29 @@ def init_db():
             created_at    TEXT NOT NULL
         )
     """)
+    # Email address (used for password-reset links). Added later, so migrate
+    # older user tables that predate the column.
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN email TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    c.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email
+        ON users(email)
+        WHERE email IS NOT NULL AND email != ''
+    """)
+
+    # Password-reset tokens (one-time, time-limited links emailed to the user).
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            token      TEXT    NOT NULL UNIQUE,
+            expires_at TEXT    NOT NULL,
+            used       INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT    NOT NULL
+        )
+    """)
 
     # Instagram profile discovery queue
     c.execute("""
@@ -599,3 +622,70 @@ def user_count() -> int:
     n = c.fetchone()[0]
     conn.close()
     return n
+
+
+# ── Email & password-reset support ─────────────────────────────────────────────
+
+def set_user_email(username: str, email: str) -> bool:
+    """Attach/update the email address on an account. False if no such user."""
+    conn = get_connection()
+    cur  = conn.execute(
+        "UPDATE users SET email = ? WHERE username = ?",
+        ((email or "").strip(), (username or "").strip()),
+    )
+    conn.commit()
+    changed = cur.rowcount > 0
+    conn.close()
+    return changed
+
+
+def get_user_by_email(email: str):
+    conn = get_connection()
+    c    = conn.cursor()
+    c.execute("SELECT * FROM users WHERE email = ?", ((email or "").strip(),))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_password_reset_token(user_id, token: str, expires_at: str):
+    """Store a one-time reset token with its expiry (ISO timestamp)."""
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO password_reset_tokens (user_id, token, expires_at, used, created_at)
+           VALUES (?, ?, ?, 0, ?)""",
+        (user_id, token, expires_at, datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_password_reset_token(token: str):
+    conn = get_connection()
+    c    = conn.cursor()
+    c.execute("SELECT * FROM password_reset_tokens WHERE token = ?", (token,))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def mark_reset_token_used(token: str):
+    conn = get_connection()
+    conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
+def update_user_password(user_id, new_password: str) -> bool:
+    """Set a new (hashed) password for a user id. False if no such user."""
+    if not new_password:
+        return False
+    conn = get_connection()
+    cur  = conn.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (generate_password_hash(new_password), user_id),
+    )
+    conn.commit()
+    changed = cur.rowcount > 0
+    conn.close()
+    return changed

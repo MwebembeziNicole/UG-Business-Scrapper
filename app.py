@@ -6,7 +6,7 @@ Run with: python run.py
 import os
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 from flask import Flask, jsonify, request, send_file, render_template, redirect, url_for
 from flask_cors import CORS
@@ -23,6 +23,7 @@ import config
 # database.connection), so every `db.<fn>` call behaves exactly as before.
 from database import repository as db
 import exporter
+import mailer
 
 # Import scrapers (live platforms: Jiji, Instagram, Yellow Pages)
 from scrapers.jiji        import scrape_jiji, discover_jiji, scrape_jiji_listings
@@ -69,7 +70,7 @@ def _get_secret_key():
 
 
 # Endpoints reachable without logging in
-_OPEN_ENDPOINTS = {"login", "static"}
+_OPEN_ENDPOINTS = {"login", "static", "forgot_password", "reset_password"}
 
 
 @app.before_request
@@ -510,6 +511,7 @@ def dashboard():
 def login():
     needs_setup = db.user_count() == 0          # first run -> create the first account
     error = None
+    notice = "Your password has been reset. Please sign in." if request.args.get("reset") else None
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -525,7 +527,55 @@ def login():
                 login_user(User(u["id"], u["username"]))
                 return redirect(url_for("dashboard"))
             error = "Invalid username or password."
-    return render_template("login.html", needs_setup=needs_setup, error=error)
+    return render_template("login.html", needs_setup=needs_setup, error=error, notice=notice)
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Request a reset link. Always reports success so an attacker can't use this
+    page to discover which email addresses have accounts (no enumeration)."""
+    sent = False
+    error = None
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        if not email:
+            error = "Please enter your email address."
+        else:
+            user = db.get_user_by_email(email)
+            if user:
+                token   = secrets.token_urlsafe(32)
+                expires = (datetime.now() + timedelta(minutes=config.RESET_TOKEN_TTL_MIN)).isoformat()
+                db.create_password_reset_token(user["id"], token, expires)
+                reset_url = config.APP_BASE_URL.rstrip("/") + url_for("reset_password", token=token)
+                try:
+                    mailer.send_password_reset(email, reset_url, user["username"])
+                except Exception as e:
+                    # Don't leak failures to the page; log for the admin instead.
+                    print(f"[forgot-password] could not send reset email: {e}")
+            sent = True
+    return render_template("forgot_password.html", sent=sent, error=error)
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    rec   = db.get_password_reset_token(token)
+    valid = bool(rec) and not rec["used"] and rec["expires_at"] > datetime.now().isoformat()
+    if not valid:
+        return render_template("reset_password.html", valid=False,
+                               error="This reset link is invalid or has expired. Request a new one.")
+    error = None
+    if request.method == "POST":
+        pw1 = request.form.get("password", "")
+        pw2 = request.form.get("password2", "")
+        if len(pw1) < 6:
+            error = "Password must be at least 6 characters."
+        elif pw1 != pw2:
+            error = "The two passwords do not match."
+        else:
+            db.update_user_password(rec["user_id"], pw1)
+            db.mark_reset_token_used(token)
+            return redirect(url_for("login", reset="1"))
+    return render_template("reset_password.html", valid=True, error=error, token=token)
 
 
 @app.route("/logout")
