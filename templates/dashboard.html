@@ -297,7 +297,7 @@
     <div class="crumbs">Business Scraping Agent &nbsp;/&nbsp; <b id="crumb">Dashboard</b></div>
     <div class="topbar-actions">
       <button class="icon-btn" id="themeToggle" title="Toggle light / dark mode" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i></button>
-      <button class="icon-btn" title="Refresh" onclick="refreshAll()"><i class="fa-solid fa-rotate-right"></i></button>
+      <button class="icon-btn" title="Refresh" onclick="doRefresh(this)"><i class="fa-solid fa-rotate-right"></i></button>
       <div class="user-chip">
         <div class="user-av">{{ initials }}</div>
         <div><div class="user-name">{{ username }}</div><div class="user-role">Investigator</div></div>
@@ -338,6 +338,7 @@
           <div class="panel-head">
             <div class="panel-title">Platform Status</div>
             <button class="btn btn-primary btn-sm" id="runCollection" onclick="runCollection()"><i class="fa-solid fa-play"></i> Run Collection</button>
+            <button class="btn btn-ghost btn-sm" id="stopCollection" onclick="stopCollection(this)" title="Pause the collection" style="display:none;"><i class="fa-solid fa-pause"></i> Pause</button>
           </div>
           <table>
             <thead><tr><th>Platform</th><th>Last Collection</th><th>Status</th><th class="num">Records</th><th style="text-align:right;">Run</th></tr></thead>
@@ -562,8 +563,9 @@ function renderPlatformRows(){
   const rows = PLATFORMS.map(p=>{
     const s=statsData[p]||{};
     const st=s.scrape_status||'idle';
-    // Detect a running -> finished transition and capture how many were collected.
-    if(_platPrev[p]==='running' && st!=='running'){
+    // Detect a running -> completed transition and capture how many were collected.
+    // (A user-stopped run shows the "Stopped" badge instead of a success flash.)
+    if(_platPrev[p]==='running' && st!=='running' && st!=='cancelled'){
       const log = logsData.find(l=>l.platform===p);
       _platDone[p] = { until: now+2200, count: (log && log.count_new!=null) ? log.count_new : null };
     }
@@ -571,10 +573,12 @@ function renderPlatformRows(){
     const badge = st==='running'?'<span class="badge b-run">Running</span>'
                : st==='error'?'<span class="badge b-fail">Error</span>'
                : st==='done'?'<span class="badge b-ok">Completed</span>'
+               : st==='cancelled'?'<span class="badge b-idle">Stopped</span>'
                : '<span class="badge b-idle">Idle</span>';
     let btn;
     if(st==='running'){
-      btn = `<button class="btn btn-outline btn-sm" disabled><i class="fa-solid fa-spinner fa-spin"></i> Collecting…</button>`;
+      // While running, the button becomes a Pause control so a mistaken run can be stopped.
+      btn = `<button class="btn btn-ghost btn-sm" onclick="stopScrape('${p}')" title="Pause this collector"><i class="fa-solid fa-pause"></i> Stop</button>`;
     } else if(_platDone[p] && _platDone[p].until>now){
       const c=_platDone[p].count;
       const label = (c!=null) ? `Collected ${Number(c).toLocaleString()}` : 'Collected';
@@ -669,6 +673,7 @@ function renderHistory(){
 
 // ── Run Collection ──────────────────────────────────────────────────────────
 const RUN_BTN_DEFAULT = '<i class="fa-solid fa-play"></i> Run Collection';
+let _collectionStopped = false;   // set when the user pauses the whole collection
 async function runCollection(){
   const btn=document.getElementById('runCollection');
   if(btn.dataset.orig===undefined) btn.dataset.orig=btn.innerHTML;
@@ -681,6 +686,8 @@ async function runCollection(){
       btn.classList.remove('is-done');
       btn.classList.add('is-running');
       btn.innerHTML='<i class="fa-solid fa-gear spin-slow"></i> Running…';
+      const stop=document.getElementById('stopCollection');
+      if(stop){ stop.style.display=''; stop.disabled=false; stop.innerHTML='<i class="fa-solid fa-pause"></i> Pause'; }
       startPolling();
     }
     else toast(d.error||'Could not start collection','error');
@@ -692,23 +699,42 @@ function startPolling(){
     await loadStats(); await loadLogs();
     const anyRunning=PLATFORMS.some(p=>(statsData[p]||{}).scrape_status==='running');
     if(!anyRunning){ clearInterval(pollingTimer); pollingTimer=null;
+      const wasStopped=_collectionStopped; _collectionStopped=false;
       const btn=document.getElementById('runCollection');
       if(btn.classList.contains('is-running')){
-        // Only the main Run Collection button shows the completion flourish.
         btn.classList.remove('is-running');
-        btn.classList.add('is-done');
-        btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Collection Complete';
-        setTimeout(()=>{
-          btn.classList.remove('is-done');
+        if(wasStopped){
+          // Stopped by the user — return quietly to default, no success flourish.
           btn.disabled=false;
           btn.innerHTML=btn.dataset.orig||RUN_BTN_DEFAULT;
-        },1600);
+        } else {
+          btn.classList.add('is-done');
+          btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Collection Complete';
+          setTimeout(()=>{
+            btn.classList.remove('is-done');
+            btn.disabled=false;
+            btn.innerHTML=btn.dataset.orig||RUN_BTN_DEFAULT;
+          },1600);
+        }
       } else {
         btn.disabled=false;
       }
+      const stop=document.getElementById('stopCollection');
+      if(stop) stop.style.display='none';
       resetExportButtons();   // fresh data collected → any prior export is now stale
-      loadLatest(); toast('Collection complete.','success'); }
+      loadLatest(); toast(wasStopped?'Collection paused.':'Collection complete.', wasStopped?'info':'success'); }
   },2500);
+}
+// Pause / stop controls — ask the server to halt at the next safe checkpoint.
+async function stopCollection(btn){
+  _collectionStopped=true;
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Pausing…'; }
+  try{ await fetch('/api/scrape/stop',{method:'POST'}); toast('Pausing collection — finishing the current step…','info'); }
+  catch(e){ toast('Could not pause — is the app running?','error'); if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-pause"></i> Pause'; } }
+}
+async function stopScrape(p){
+  try{ await fetch('/api/scrape/'+p+'/stop',{method:'POST'}); toast('Pausing '+(PLATFORM_LABELS[p]||p)+'…','info'); }
+  catch(e){ toast('Could not pause — is the app running?','error'); }
 }
 
 // ── Export ──────────────────────────────────────────────────────────────────
@@ -731,8 +757,11 @@ async function exportToday(btn){
     const a=document.createElement('a'); a.href=url; a.download=fname;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),4000);
-    // Persisted "Excel Exported" — stays until a new scrape changes the data.
-    if(btn){ btn.classList.add('is-done'); btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Excel Exported'; }
+    // Green "Excel Exported" briefly, then return to the default state after 3s.
+    if(btn){
+      btn.classList.add('is-done'); btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Excel Exported';
+      setTimeout(()=>{ btn.classList.remove('is-done'); btn.disabled=false; btn.innerHTML=btn.dataset.orig; }, 3000);
+    }
     toast('Excel exported.','success');
   }catch(e){
     if(btn){ btn.classList.add('is-fail'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Export Failed'; }
@@ -894,8 +923,11 @@ async function saveSettings(btn){
     const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(r.ok){
       toast('Settings saved.','success'); loadScheduleInfo();
-      // Persisted "Saved" state — stays until the user edits a field (see markSettingsDirty).
-      if(btn){ btn.classList.add('is-done'); btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Saved'; }
+      // Green "Saved" briefly, then return to the default state after 3s.
+      if(btn){
+        btn.classList.add('is-done'); btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Saved';
+        setTimeout(()=>{ btn.classList.remove('is-done'); btn.disabled=false; btn.innerHTML=btn.dataset.orig||SAVE_BTN_DEFAULT; }, 3000);
+      }
     } else {
       toast('Failed to save settings','error');
       if(btn){ btn.classList.add('is-fail'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Save Failed'; }
@@ -957,7 +989,19 @@ function toast(msg,type='info'){
   el.innerHTML=`<i class="fa-solid ${icons[type]||'fa-circle-info'}"></i> ${msg}`;
   wrap.appendChild(el); setTimeout(()=>el.remove(),4000);
 }
-function refreshAll(){ loadStats(); loadLogs(); loadLatest(); loadLoginStatus(); }
+async function refreshAll(){ await Promise.all([loadStats(), loadLogs(), loadLatest(), loadLoginStatus()]); }
+// Spin the refresh icon while the data actually reloads (min ~600ms so the spin reads).
+async function doRefresh(btn){
+  const icon = btn && btn.querySelector('i');
+  if(icon) icon.classList.add('fa-spin');
+  const started = Date.now();
+  try{ await refreshAll(); toast('Refreshed.','success'); }
+  catch(e){ toast('Could not refresh — is the app running?','error'); }
+  finally{
+    const wait = Math.max(0, 600 - (Date.now()-started));
+    setTimeout(()=>{ if(icon) icon.classList.remove('fa-spin'); }, wait);
+  }
+}
 
 // ── Theme (light / dark) ─────────────────────────────────────────────────────
 function applyTheme(t){

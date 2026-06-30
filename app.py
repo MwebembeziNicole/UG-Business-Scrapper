@@ -92,11 +92,20 @@ def _no_cache_html(resp):
         resp.headers["Cache-Control"] = "no-store, max-age=0"
     return resp
 
-# Scrape status tracker  {platform: {status, progress, total, log_id, error}}
+# Scrape status tracker  {platform: {status, progress, total, log_id, error, cancel}}
 scrape_status: dict = {
-    p: {"status": "idle", "progress": 0, "total": config.DAILY_LIMIT_DEFAULT, "log_id": None, "error": None}
+    p: {"status": "idle", "progress": 0, "total": config.DAILY_LIMIT_DEFAULT, "log_id": None, "error": None, "cancel": False}
     for p in db.PLATFORMS
 }
+
+
+class ScrapeCancelled(BaseException):
+    """Raised to abort an in-progress scrape when the user clicks Pause/Stop.
+
+    Subclasses BaseException (not Exception) on purpose: the individual scrapers
+    wrap their loops in broad `except Exception` blocks, and this must propagate
+    straight through them up to the worker so the run actually stops."""
+    pass
 
 # Discover status trackers
 discover_status: dict        = {"status": "idle", "progress": 0, "total": 0, "found": 0, "error": None}
@@ -199,22 +208,27 @@ def _run_scrape(platform: str):
         return
 
     scrape_status[platform].update(
-        status="running", progress=0, total=limit, error=None
+        status="running", progress=0, total=limit, error=None, cancel=False
     )
     log_id = db.start_log(platform)
     scrape_status[platform]["log_id"] = log_id
 
     def progress_cb(current, total):
+        # Honour a Pause/Stop request the moment the scraper reports progress.
+        if scrape_status[platform].get("cancel"):
+            raise ScrapeCancelled()
         scrape_status[platform]["progress"] = current
         scrape_status[platform]["total"]    = total
 
+    new_count = 0
+    skipped   = 0
     try:
         scraper   = SCRAPER_MAP[platform]
         records   = scraper(api_key=api_key, target_count=limit, progress_cb=progress_cb)
-        new_count = 0
-        skipped   = 0
 
         for record in records:
+            if scrape_status[platform].get("cancel"):
+                raise ScrapeCancelled()
             if db.insert_business(platform, record):
                 new_count += 1
             else:
@@ -227,10 +241,17 @@ def _run_scrape(platform: str):
         scrape_status[platform].update(status="done", progress=new_count, total=limit)
         print(f"[{platform}] done: {new_count} new | {skipped} skipped")
 
+    except ScrapeCancelled:
+        db.finish_log(log_id, new_count, skipped, error="Stopped by user")
+        scrape_status[platform].update(status="cancelled", error=None)
+        print(f"[{platform}] stopped by user — kept {new_count} new before stopping")
+
     except Exception as e:
         db.finish_log(log_id, 0, 0, error=str(e))
         scrape_status[platform].update(status="error", error=str(e))
         print(f"[{platform}] Error: {e}")
+    finally:
+        scrape_status[platform]["cancel"] = False
 
 
 def _enabled_platforms():
@@ -818,6 +839,10 @@ def _run_all_sequential():
     """Run every ENABLED platform ONE AT A TIME (one browser open at a time = far
     more stable than 5 concurrent Chrome windows), then write the daily snapshot."""
     for platform in _enabled_platforms():
+        # If the user asked to stop the whole collection, don't start the next one.
+        if scrape_status[platform].get("cancel"):
+            scrape_status[platform].update(status="cancelled", cancel=False)
+            continue
         if scrape_status[platform]["status"] != "running":
             try:
                 _run_scrape(platform)
@@ -832,6 +857,23 @@ def api_scrape_all():
         return jsonify({"error": "A collection is already running"}), 409
     threading.Thread(target=_run_all_sequential, daemon=True).start()
     return jsonify({"started": _enabled_platforms()})
+
+
+@app.route("/api/scrape/<platform>/stop", methods=["POST"])
+def api_scrape_stop(platform):
+    """Request a running platform scrape to stop at the next safe checkpoint."""
+    if platform not in db.PLATFORMS:
+        return jsonify({"error": "Unknown platform"}), 400
+    scrape_status[platform]["cancel"] = True
+    return jsonify({"message": f"Stopping {platform}…"})
+
+
+@app.route("/api/scrape/stop", methods=["POST"])
+def api_scrape_stop_all():
+    """Request the whole collection to stop (every platform)."""
+    for p in db.PLATFORMS:
+        scrape_status[p]["cancel"] = True
+    return jsonify({"message": "Stopping collection…"})
 
 
 @app.route("/api/download/<platform>")
