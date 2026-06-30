@@ -78,6 +78,43 @@
   .btn-sm{padding:8px 14px;font-size:12.5px;}
   .btn:disabled{opacity:.5;cursor:not-allowed;}
 
+  /* ── Microinteractions: tactile buttons, subtle motion ──────────────────── */
+  .btn{transition:transform .19s cubic-bezier(.2,.7,.3,1), box-shadow .19s ease, background-color .19s ease, color .19s ease, border-color .19s ease, filter .19s ease;}
+  .btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,24,40,.10);filter:brightness(1.03);}
+  .btn:active:not(:disabled){transform:translateY(1px) scale(.98);box-shadow:0 1px 2px rgba(16,24,40,.08);transition-duration:.09s;filter:brightness(.99);}
+  .icon-btn{transition:transform .19s cubic-bezier(.2,.7,.3,1), background-color .19s ease, color .19s ease, box-shadow .19s ease;}
+  .icon-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,24,40,.10);}
+  .icon-btn:active{transform:translateY(1px) scale(.97);transition-duration:.09s;}
+
+  /* Success (completed) state for any button — uses the app's existing green */
+  .btn.is-done{background:var(--ok)!important;border-color:var(--ok)!important;color:#fff!important;filter:none;opacity:1;}
+
+  /* Primary "Run Collection": elegant light sweep on hover + while running */
+  #runCollection{position:relative;overflow:hidden;}
+  #runCollection::after{content:"";position:absolute;top:0;left:-150%;width:55%;height:100%;
+     background:linear-gradient(100deg,transparent,rgba(255,255,255,.38),transparent);
+     transform:skewX(-18deg);opacity:0;pointer-events:none;}
+  #runCollection:hover:not(:disabled)::after{animation:btnSweep 1.1s ease;}
+  #runCollection.is-running{cursor:progress;}
+  #runCollection.is-running::after{opacity:1;animation:btnSweep 1.7s linear infinite;}
+  @keyframes btnSweep{0%{left:-150%;opacity:0;}12%{opacity:1;}60%{opacity:1;}100%{left:165%;opacity:0;}}
+
+  /* Slow gear/loader spin used in running states */
+  .spin-slow{animation:spinSlow 1.5s linear infinite;transform-origin:50% 50%;}
+  @keyframes spinSlow{to{transform:rotate(360deg);}}
+
+  /* Platform indicator pulse while that platform is collecting */
+  .dot.pulse{animation:dotPulse 1.5s ease-in-out infinite;}
+  @keyframes dotPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.45;transform:scale(.82);}}
+
+  /* Accessibility: honour reduced-motion — keep feedback, drop movement */
+  @media (prefers-reduced-motion: reduce){
+    .btn,.icon-btn{transition:background-color .12s ease,color .12s ease,border-color .12s ease;}
+    .btn:hover:not(:disabled),.icon-btn:hover,.btn:active:not(:disabled),.icon-btn:active{transform:none;box-shadow:none;filter:none;}
+    #runCollection::after{display:none;}
+    .spin-slow,.dot.pulse,.fa-spin,#runCollection.is-running::after{animation:none;}
+  }
+
   .card-pad{padding:22px 24px;}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
   .panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--line);}
@@ -255,7 +292,7 @@
         <div class="user-av">{{ initials }}</div>
         <div><div class="user-name">{{ username }}</div><div class="user-role">Investigator</div></div>
       </div>
-      <button class="icon-btn" title="Log out" onclick="window.location.href='/logout'"><i class="fa-solid fa-right-from-bracket"></i></button>
+      <button class="icon-btn" title="Log out" onclick="window.location.href='/logout'"><i class="fa-solid fa-right-to-bracket"></i></button>
     </div>
   </div>
 
@@ -276,7 +313,7 @@
           <div class="status-meta" id="statusMeta">&nbsp;</div>
         </div>
         <div class="status-action">
-          <button class="btn btn-primary btn-lg" onclick="exportToday()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+          <button class="btn btn-primary btn-lg" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
         </div>
       </div>
 
@@ -326,7 +363,7 @@
     <section class="section" id="section-data">
       <div class="page-head">
         <div><div class="page-title">Business Data</div><div class="page-sub">Review every collected business record, then export to Excel.</div></div>
-        <button class="btn btn-primary btn-lg" onclick="exportToday()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+        <button class="btn btn-primary btn-lg" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
       </div>
       <div class="toolbar">
         <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by business name, phone number, email, or location"/></div>
@@ -507,20 +544,50 @@ function lastCollectionFor(p){
   return log ? (log.started_at||'').substring(0,16).replace('T',' ') : '—';
 }
 
+let _platPrev = {};       // previous scrape_status per platform (transition detection)
+let _platDone = {};       // {p:{until,count}} — brief "collected" success per platform
+let _platDoneTimer = null;
 function renderPlatformRows(){
+  const now = Date.now();
   const rows = PLATFORMS.map(p=>{
     const s=statsData[p]||{};
     const st=s.scrape_status||'idle';
+    // Detect a running -> finished transition and capture how many were collected.
+    if(_platPrev[p]==='running' && st!=='running'){
+      const log = logsData.find(l=>l.platform===p);
+      _platDone[p] = { until: now+2200, count: (log && log.count_new!=null) ? log.count_new : null };
+    }
+    _platPrev[p] = st;
     const badge = st==='running'?'<span class="badge b-run">Running</span>'
                : st==='error'?'<span class="badge b-fail">Error</span>'
                : st==='done'?'<span class="badge b-ok">Completed</span>'
                : '<span class="badge b-idle">Idle</span>';
-    const btn = st==='running'
-      ? `<button class="btn btn-outline btn-sm" disabled><i class="fa-solid fa-spinner fa-spin"></i></button>`
-      : `<button class="btn btn-outline btn-sm" onclick="startScrape('${p}')"><i class="fa-solid fa-play"></i> Run</button>`;
+    let btn;
+    if(st==='running'){
+      btn = `<button class="btn btn-outline btn-sm" disabled><i class="fa-solid fa-spinner fa-spin"></i> Collecting…</button>`;
+    } else if(_platDone[p] && _platDone[p].until>now){
+      const c=_platDone[p].count;
+      const label = (c!=null) ? `Collected ${Number(c).toLocaleString()}` : 'Collected';
+      btn = `<button class="btn btn-outline btn-sm is-done" disabled><i class="fa-solid fa-circle-check"></i> ${label}</button>`;
+    } else {
+      btn = `<button class="btn btn-outline btn-sm" onclick="startScrape('${p}')"><i class="fa-solid fa-play"></i> Run</button>`;
+    }
     return `<tr><td>${pf(p)}</td><td class="mono muted">${lastCollectionFor(p)}</td><td>${badge}</td><td class="num mono">${(s.total||0).toLocaleString()}</td><td style="text-align:right;">${btn}</td></tr>`;
   }).join('');
   document.getElementById('platform-rows').innerHTML = rows;
+  // Pulse the small indicator beside each platform that is currently collecting.
+  PLATFORMS.forEach(p=>{
+    if((statsData[p]||{}).scrape_status==='running'){
+      const el=document.querySelector('#platform-rows .dot-'+p);
+      if(el) el.classList.add('pulse');
+    }
+  });
+  // If a success state is showing, schedule one re-render to clear it on time
+  // even after polling has stopped.
+  const pending = Object.keys(_platDone).some(p=>_platDone[p].until>now);
+  if(pending && !_platDoneTimer){
+    _platDoneTimer=setTimeout(()=>{ _platDoneTimer=null; renderPlatformRows(); }, 2300);
+  }
 }
 
 async function startScrape(p){
@@ -591,12 +658,21 @@ function renderHistory(){
 }
 
 // ── Run Collection ──────────────────────────────────────────────────────────
+const RUN_BTN_DEFAULT = '<i class="fa-solid fa-play"></i> Run Collection';
 async function runCollection(){
   const btn=document.getElementById('runCollection');
+  if(btn.dataset.orig===undefined) btn.dataset.orig=btn.innerHTML;
   try{
     const r=await fetch('/api/scrape/all',{method:'POST'});
     const d=await r.json();
-    if(r.ok){ toast('Collection started for: '+(d.started||[]).map(p=>PLATFORM_LABELS[p]||p).join(', '),'info'); btn.disabled=true; startPolling(); }
+    if(r.ok){
+      toast('Collection started for: '+(d.started||[]).map(p=>PLATFORM_LABELS[p]||p).join(', '),'info');
+      btn.disabled=true;
+      btn.classList.remove('is-done');
+      btn.classList.add('is-running');
+      btn.innerHTML='<i class="fa-solid fa-gear spin-slow"></i> Running…';
+      startPolling();
+    }
     else toast(d.error||'Could not start collection','error');
   }catch(e){ toast('Network error — is the app running?','error'); }
 }
@@ -606,13 +682,44 @@ function startPolling(){
     await loadStats(); await loadLogs();
     const anyRunning=PLATFORMS.some(p=>(statsData[p]||{}).scrape_status==='running');
     if(!anyRunning){ clearInterval(pollingTimer); pollingTimer=null;
-      document.getElementById('runCollection').disabled=false;
+      const btn=document.getElementById('runCollection');
+      if(btn.classList.contains('is-running')){
+        // Only the main Run Collection button shows the completion flourish.
+        btn.classList.remove('is-running');
+        btn.classList.add('is-done');
+        btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Collection Complete';
+        setTimeout(()=>{
+          btn.classList.remove('is-done');
+          btn.disabled=false;
+          btn.innerHTML=btn.dataset.orig||RUN_BTN_DEFAULT;
+        },1600);
+      } else {
+        btn.disabled=false;
+      }
       loadLatest(); toast('Collection complete.','success'); }
   },2500);
 }
 
 // ── Export ──────────────────────────────────────────────────────────────────
-function exportToday(){ window.location.href='/api/download/today'; toast('Preparing Excel export…','info'); }
+function exportToday(btn){
+  if(btn){
+    if(btn.dataset.orig===undefined) btn.dataset.orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.classList.remove('is-done');
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Exporting…';
+    setTimeout(()=>{
+      btn.classList.add('is-done');
+      btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Excel Exported';
+      setTimeout(()=>{
+        btn.classList.remove('is-done');
+        btn.disabled=false;
+        btn.innerHTML=btn.dataset.orig;
+      },1600);
+    },900);
+  }
+  window.location.href='/api/download/today';
+  toast('Preparing Excel export…','info');
+}
 
 // ── Browser logins (phones need a signed-in session) ────────────────────────
 const LOGIN_PLATFORMS=['instagram','jiji','yellowpages','twitter','tiktok'];
