@@ -15,14 +15,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import config
 
-# Database backend chosen automatically:
+# Database access goes through the repository layer (Phase 3). The repository
+# delegates to whichever backend is configured:
 #   • PostgreSQL when configured (DATABASE_URL or PG* env vars are set) — your Windows box
 #   • plain SQLite file otherwise — e.g. a colleague's Mac, no DB server needed
-# Same code runs on both with no edits. (Resolved once in config.USE_POSTGRES.)
-if config.USE_POSTGRES:
-    import database_pg as db
-else:
-    import database as db
+# Backend selection still happens once from config.USE_POSTGRES (inside
+# database.connection), so every `db.<fn>` call behaves exactly as before.
+from database import repository as db
 import exporter
 
 # Import scrapers (live platforms: Jiji, Instagram, Yellow Pages)

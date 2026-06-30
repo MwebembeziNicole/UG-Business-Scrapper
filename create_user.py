@@ -7,14 +7,11 @@ The first account can also be created on the login page the first time you open
 the app. Use this script to add more accounts later.
 """
 
-import os
 import sys
 
 # Use the same backend the app uses (Postgres when configured, else SQLite).
-if os.environ.get("DATABASE_URL") or os.environ.get("PGDATABASE") or os.environ.get("PGHOST"):
-    import database_pg as db
-else:
-    import database as db
+# The repository resolves the active backend from config (Phase 3).
+from database import repository as db
 
 
 def main():
