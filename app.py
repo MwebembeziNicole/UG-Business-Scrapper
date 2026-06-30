@@ -512,6 +512,7 @@ def login():
     needs_setup = db.user_count() == 0          # first run -> create the first account
     error = None
     notice = "Your password has been reset. Please sign in." if request.args.get("reset") else None
+    username = ""
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -527,7 +528,7 @@ def login():
                 login_user(User(u["id"], u["username"]))
                 return redirect(url_for("dashboard"))
             error = "Invalid username or password."
-    return render_template("login.html", needs_setup=needs_setup, error=error, notice=notice)
+    return render_template("login.html", needs_setup=needs_setup, error=error, notice=notice, username=username)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -535,6 +536,8 @@ def register():
     """Self-service account creation. Captures an email so the password-reset
     flow works. Writes to the active backend (Postgres when configured)."""
     error = None
+    username = ""
+    email = ""
     if request.method == "POST":
         username  = request.form.get("username", "").strip()
         email     = request.form.get("email", "").strip()
@@ -555,7 +558,7 @@ def register():
             u = db.get_user_by_username(username)
             login_user(User(u["id"], u["username"]))
             return redirect(url_for("dashboard"))
-    return render_template("register.html", error=error)
+    return render_template("register.html", error=error, username=username, email=email)
 
 
 @app.route("/forgot-password", methods=["GET", "POST"])
@@ -564,6 +567,7 @@ def forgot_password():
     page to discover which email addresses have accounts (no enumeration)."""
     sent = False
     error = None
+    email = ""
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         if not email:
@@ -581,7 +585,7 @@ def forgot_password():
                     # Don't leak failures to the page; log for the admin instead.
                     print(f"[forgot-password] could not send reset email: {e}")
             sent = True
-    return render_template("forgot_password.html", sent=sent, error=error)
+    return render_template("forgot_password.html", sent=sent, error=error, email=email)
 
 
 @app.route("/reset-password/<token>", methods=["GET", "POST"])

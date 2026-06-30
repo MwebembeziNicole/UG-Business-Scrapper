@@ -24,6 +24,10 @@
   .inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,67,191,.12);}
   .btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn:hover{background:var(--blue-dark);}
+  .pw-wrap{position:relative;}
+  .pw-wrap .inp{padding-right:42px;}
+  .pw-eye{position:absolute;top:10px;right:8px;background:none;border:none;color:var(--text-2);cursor:pointer;font-size:14px;padding:6px;line-height:1;}
+  .pw-eye:hover{color:var(--blue);}
   .err{background:#FBE9E9;color:#C62828;border:1px solid #f3c9c9;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
   .foot{font-size:11px;color:var(--text-2);text-align:center;margin-top:18px;}
   .back{display:block;text-align:center;font-size:12.5px;color:var(--blue);text-decoration:none;margin-top:16px;}
@@ -45,21 +49,39 @@
     {% if error %}<div class="err"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
 
     <label for="username">Username</label>
-    <input class="inp" id="username" name="username" autocomplete="username" autofocus required/>
+    <input class="inp" id="username" name="username" value="{{ username or '' }}" autocomplete="username" autofocus required/>
 
     <label for="email">Email address</label>
-    <input class="inp" id="email" name="email" type="email" autocomplete="email" required/>
+    <input class="inp" id="email" name="email" type="email" value="{{ email or '' }}" autocomplete="email" required/>
 
     <label for="password">Password</label>
-    <input class="inp" id="password" name="password" type="password" autocomplete="new-password" required/>
+    <div class="pw-wrap">
+      <input class="inp" id="password" name="password" type="password" autocomplete="new-password" required/>
+      <button type="button" class="pw-eye" data-target="password" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
+    </div>
 
     <label for="password2">Confirm password</label>
-    <input class="inp" id="password2" name="password2" type="password" autocomplete="new-password" required/>
+    <div class="pw-wrap">
+      <input class="inp" id="password2" name="password2" type="password" autocomplete="new-password" required/>
+      <button type="button" class="pw-eye" data-target="password2" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
+    </div>
 
     <button class="btn" type="submit"><i class="fa-solid fa-user-plus"></i> Register &amp; sign in</button>
 
     <a class="back" href="/login"><i class="fa-solid fa-arrow-left"></i> Back to sign in</a>
     <div class="foot">Uganda Revenue Authority · Internal use only</div>
   </form>
+<script>
+  document.querySelectorAll('.pw-eye').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var inp  = document.getElementById(btn.getAttribute('data-target'));
+      var icon = btn.querySelector('i');
+      var show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      icon.classList.toggle('fa-eye', !show);
+      icon.classList.toggle('fa-eye-slash', show);
+    });
+  });
+</script>
 </body>
 </html>
