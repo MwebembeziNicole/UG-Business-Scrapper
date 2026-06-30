@@ -83,6 +83,15 @@ def _require_login():
         return jsonify({"error": "Authentication required"}), 401
     return redirect(url_for("login"))
 
+
+@app.after_request
+def _no_cache_html(resp):
+    """Never let the browser serve a stale copy of the app's HTML pages, so UI
+    updates always take effect on the next load. Static assets are unaffected."""
+    if resp.mimetype == "text/html":
+        resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
+
 # Scrape status tracker  {platform: {status, progress, total, log_id, error}}
 scrape_status: dict = {
     p: {"status": "idle", "progress": 0, "total": config.DAILY_LIMIT_DEFAULT, "log_id": None, "error": None}
