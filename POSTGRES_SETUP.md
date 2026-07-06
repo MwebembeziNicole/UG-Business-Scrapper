@@ -94,5 +94,5 @@ Change the import back to `import database as db`. The SQLite file is untouched.
 - **Scheduler:** if you later run under gunicorn with multiple workers, run the
   APScheduler job in only one worker so the daily collection doesn't fire twice.
 - **SSO later:** login is self-managed for now but isolated in `app.py`'s `login`
-  route + the `users` table, so URA Active Directory / SSO can replace it later
+  route + the `users` table, so Org Active Directory / SSO can replace it later
   without touching the rest of the app.
