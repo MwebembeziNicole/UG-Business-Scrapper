@@ -29,5 +29,6 @@ EXPOSE 8080
 
 # Single worker: APScheduler and the in-memory scrape_status dict are process-local,
 # so more than one gunicorn worker would duplicate the daily job and split state.
-CMD ["gunicorn", "app:create_app()", "--bind", "0.0.0.0:8080", \
-     "--workers", "1", "--threads", "4", "--timeout", "180"]
+# Shell form (not exec-array) so $PORT expands — Railway assigns its own port at
+# runtime and won't always be 8080; Fly.io users can keep setting PORT=8080 in env.
+CMD gunicorn app:create_app() --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 4 --timeout 180

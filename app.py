@@ -70,7 +70,7 @@ def _get_secret_key():
 
 
 # Endpoints reachable without logging in
-_OPEN_ENDPOINTS = {"login", "static", "register", "forgot_password", "reset_password"}
+_OPEN_ENDPOINTS = {"login", "static", "register", "forgot_password", "reset_password", "healthz"}
 
 
 @app.before_request
@@ -527,6 +527,12 @@ def _setup_scheduler():
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
+@app.route("/healthz")
+def healthz():
+    """Unauthenticated liveness check for platform health probes (Railway, Fly)."""
+    return jsonify({"status": "ok"}), 200
+
 
 @app.route("/")
 def dashboard():
