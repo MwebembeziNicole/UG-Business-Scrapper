@@ -144,7 +144,7 @@ DISABLED_PLATFORMS_DEFAULT = os.environ.get("DISABLED_PLATFORMS_DEFAULT", "")
 # (generated once), exactly as before.
 FLASK_SECRET_KEY = _env("FLASK_SECRET_KEY")
 
-HOST = _env("HOST", "0.0.0.0")
+HOST = _env("HOST", "127.0.0.1")
 PORT = _env_int("PORT", 5050)
 
 
