@@ -31,4 +31,4 @@ EXPOSE 8080
 # so more than one gunicorn worker would duplicate the daily job and split state.
 # Shell form (not exec-array) so $PORT expands — Railway assigns its own port at
 # runtime and won't always be 8080; Fly.io users can keep setting PORT=8080 in env.
-CMD gunicorn app:create_app() --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 4 --timeout 180
+CMD gunicorn "app:create_app()" --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 4 --timeout 180
