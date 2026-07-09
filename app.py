@@ -35,8 +35,12 @@ from scrapers.tiktok      import scrape_tiktok,  discover_tiktok,  scrape_tiktok
 # ─── App setup ────────────────────────────────────────────────────────────────
 
 app       = Flask(__name__, template_folder=config.TEMPLATE_FOLDER)
-CORS(app)
+CORS(app, supports_credentials=True, origins=[config.APP_BASE_URL])
 scheduler = BackgroundScheduler(timezone=config.SCHEDULER_TIMEZONE)
+
+app.config['SESSION_COOKIE_SECURE']   = config.SESSION_COOKIE_SECURE
+app.config['SESSION_COOKIE_SAMESITE'] = config.SESSION_COOKIE_SAMESITE
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # ─── Authentication (Flask-Login; single login type, SSO-ready later) ──────────
 

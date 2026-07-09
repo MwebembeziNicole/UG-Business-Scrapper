@@ -147,6 +147,13 @@ FLASK_SECRET_KEY = _env("FLASK_SECRET_KEY")
 HOST = _env("HOST", "0.0.0.0")
 PORT = _env_int("PORT", 5050)
 
+# ── Session cookie security ───────────────────────────────────────────────────
+# SESSION_COOKIE_SECURE is off by default so local HTTP testing (Kali <-> Windows)
+# still works. Set FLASK_ENV=production (e.g. in Railway's env vars) to enable it
+# automatically once deployed over HTTPS.
+SESSION_COOKIE_SECURE = _env("FLASK_ENV", "development") == "production"
+SESSION_COOKIE_SAMESITE = _env("SESSION_COOKIE_SAMESITE", "Lax")
+
 
 # ── Email / SMTP (password-reset links) ───────────────────────────────────────
 # All secrets come from the environment (.env). For Gmail use an App Password
