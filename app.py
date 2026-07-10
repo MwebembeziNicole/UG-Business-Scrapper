@@ -932,6 +932,40 @@ def api_download_all():
     )
 
 
+@app.route("/api/exports/dates")
+def api_export_dates():
+    """List dates (YYYY-MM-DD) that have a saved daily snapshot, newest first."""
+    if not os.path.isdir(config.DAILY_EXPORTS_DIR):
+        return jsonify({"dates": []})
+    dates = sorted(
+        (f[len("businesses_"):-len(".xlsx")]
+         for f in os.listdir(config.DAILY_EXPORTS_DIR)
+         if f.startswith("businesses_") and f.endswith(".xlsx")),
+        reverse=True,
+    )
+    return jsonify({"dates": dates})
+
+
+@app.route("/api/download/daily/<date>")
+def api_download_daily(date):
+    """Download a previously saved daily snapshot by date (YYYY-MM-DD)."""
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "Invalid date format, expected YYYY-MM-DD"}), 400
+
+    filepath = exporter.get_daily_export(date)
+    if not filepath:
+        return jsonify({"error": f"No export found for {date}"}), 404
+
+    return send_file(
+        filepath,
+        as_attachment=True,
+        download_name=os.path.basename(filepath),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 @app.route("/api/businesses")
 def api_businesses():
     platform = request.args.get("platform")

@@ -98,6 +98,13 @@
   .export-btn{justify-content:center;}
   .export-btn.btn-lg{min-width:188px;}
 
+  /* Previous-exports dropdown, sits beside the Export Excel button */
+  .export-group{display:flex;align-items:stretch;gap:8px;}
+  .export-date-select{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);
+     font-family:inherit;font-size:13px;font-weight:600;padding:0 12px;cursor:pointer;transition:.15s;max-width:190px;}
+  .export-date-select:hover{background:var(--bg);}
+  .export-date-select:disabled{opacity:.5;cursor:not-allowed;}
+
   /* Primary "Run Collection": elegant light sweep on hover + while running */
   #runCollection{position:relative;overflow:hidden;}
   #runCollection::after{content:"";position:absolute;top:0;left:-150%;width:55%;height:100%;
@@ -323,7 +330,12 @@
           <div class="status-meta" id="statusMeta">&nbsp;</div>
         </div>
         <div class="status-action">
-          <button class="btn btn-primary btn-lg export-btn" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+          <div class="export-group">
+            <button class="btn btn-primary btn-lg export-btn" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+            <select class="export-date-select" onchange="downloadDailyFromSelect(this)">
+              <option value="">Previous exports…</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -374,7 +386,12 @@
     <section class="section" id="section-data">
       <div class="page-head">
         <div><div class="page-title">Business Data</div><div class="page-sub">Review every collected business record, then export to Excel.</div></div>
-        <button class="btn btn-primary btn-lg export-btn" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+        <div class="export-group">
+          <button class="btn btn-primary btn-lg export-btn" onclick="exportToday(this)"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+          <select class="export-date-select" onchange="downloadDailyFromSelect(this)">
+            <option value="">Previous exports…</option>
+          </select>
+        </div>
       </div>
       <div class="toolbar">
         <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by business name, phone number, email, or location"/></div>
@@ -722,6 +739,7 @@ function startPolling(){
       const stop=document.getElementById('stopCollection');
       if(stop) stop.style.display='none';
       resetExportButtons();   // fresh data collected → any prior export is now stale
+      loadExportDates();      // today's snapshot may now exist — refresh the dropdown
       loadLatest(); toast(wasStopped?'Collection paused.':'Collection complete.', wasStopped?'info':'success'); }
   },2500);
 }
@@ -766,6 +784,44 @@ async function exportToday(btn){
   }catch(e){
     if(btn){ btn.classList.add('is-fail'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Export Failed'; }
     toast('Export failed — please try again.','error');
+  }
+}
+// ── Previous exports (per-date daily snapshots) ──────────────────────────────
+async function loadExportDates(){
+  const selects=document.querySelectorAll('.export-date-select');
+  if(!selects.length) return;
+  try{
+    const r=await fetch('/api/exports/dates');
+    const {dates=[]}=await r.json();
+    selects.forEach(sel=>{
+      const current=sel.value;
+      sel.innerHTML='<option value="">Previous exports…</option>'
+        + dates.map(d=>`<option value="${d}">${d}</option>`).join('');
+      sel.value=current && dates.includes(current) ? current : '';
+    });
+  }catch(e){ /* leave dropdown as-is if this fails */ }
+}
+async function downloadDailyFromSelect(sel){
+  const date=sel.value;
+  if(!date) return;
+  sel.disabled=true;
+  try{
+    const r=await fetch('/api/download/daily/'+date);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const blob=await r.blob();
+    const cd=r.headers.get('Content-Disposition')||'';
+    const m=cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    const fname=m?decodeURIComponent(m[1]):`businesses_${date}.xlsx`;
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    toast('Excel exported for '+date+'.','success');
+  }catch(e){
+    toast('Could not export '+date+' — please try again.','error');
+  }finally{
+    sel.disabled=false;
+    sel.value='';
   }
 }
 // New scrape data makes any prior export stale → return Export buttons to default.
@@ -1023,7 +1079,7 @@ function toggleTheme(){
 // ── Init ────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
   initTheme();
-  loadStats(); loadLogs(); loadLatest(); loadScheduleInfo(); loadLoginStatus();
+  loadStats(); loadLogs(); loadLatest(); loadScheduleInfo(); loadLoginStatus(); loadExportDates();
   setInterval(()=>{
     const anyRunning=PLATFORMS.some(p=>(statsData[p]||{}).scrape_status==='running');
     if(anyRunning){ loadStats(); loadLogs(); }
