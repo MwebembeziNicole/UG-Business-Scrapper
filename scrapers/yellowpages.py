@@ -61,14 +61,25 @@ DELAY = config.YP_REQUEST_DELAY                             # polite delay betwe
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 
-def _get(url: str, session: requests.Session) -> str:
-    try:
-        r = session.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
-        if r.status_code == 200:
-            return r.text
-        logger.warning("[YellowPages] HTTP %s for %s", r.status_code, url)
-    except Exception as e:
-        logger.warning("[YellowPages] request failed %s: %s", url, e)
+def _get(url: str, session: requests.Session, retries: int = 2) -> str:
+    """GET a page, retrying on transient failures (timeouts, connection blips,
+    5xx) so a single hiccup doesn't get mistaken for 'end of pagination' and
+    cut a category's crawl short. 4xx responses are not retried."""
+    for attempt in range(retries + 1):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+            if r.status_code == 200:
+                return r.text
+            if 400 <= r.status_code < 500:
+                logger.warning("[YellowPages] HTTP %s for %s", r.status_code, url)
+                return ""
+            logger.warning("[YellowPages] HTTP %s for %s (attempt %d/%d)",
+                            r.status_code, url, attempt + 1, retries + 1)
+        except Exception as e:
+            logger.warning("[YellowPages] request failed %s: %s (attempt %d/%d)",
+                            url, e, attempt + 1, retries + 1)
+        if attempt < retries:
+            time.sleep(DELAY * (attempt + 1))
     return ""
 
 
@@ -76,6 +87,18 @@ def _get(url: str, session: requests.Session) -> str:
 
 def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").replace("\xa0", " ")).strip()
+
+
+def _clean_phone(raw: str) -> str:
+    """Normalize a matched Ugandan mobile number to +256XXXXXXXXX."""
+    d = re.sub(r"[^\d+]", "", raw or "")
+    if d.startswith("256") and len(d) >= 12:
+        return "+" + d
+    if d.startswith("+256") and len(d) >= 13:
+        return d
+    if len(d) == 10 and d.startswith("0"):
+        return "+256" + d[1:]
+    return d if len(d) >= 9 else ""
 
 
 def _is_business_url(href: str) -> bool:
@@ -152,8 +175,12 @@ def parse_listings(html: str) -> List[Dict]:
         if em:
             email = em.group(0).lower()
 
-        # Per Nicole's request, Yellow Pages collects only name, email,
-        # location and website — no phone (the site has none) and no Facebook.
+        # Per Nicole's request, Yellow Pages collects name, email, location,
+        # website and phone (when a Ugandan mobile number appears in the listing
+        # text) — no Facebook.
+        phone_m = PHONE_RE.search(card_text)
+        phone   = _clean_phone(phone_m.group(0)) if phone_m else ""
+
         website = ""
         for link in card.find_all("a", href=True):
             ltext = _clean(link.get_text()).lower()
@@ -166,7 +193,7 @@ def parse_listings(html: str) -> List[Dict]:
         results.append({
             "business_name": name[:120],
             "username":      "",
-            "phone":         "",
+            "phone":         phone,
             "email":         email,
             "website":       website,
             "facebook":      "",

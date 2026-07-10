@@ -242,7 +242,15 @@ def _run_scrape(platform: str):
         exporter.export_platform(platform, all_records)
 
         db.finish_log(log_id, new_count, skipped)
-        scrape_status[platform].update(status="done", progress=new_count, total=limit)
+        # Yellow Pages always crawls the whole site regardless of the daily-limit
+        # setting (see the `cap` logic in scrapers/yellowpages.py), so showing that
+        # setting as "total" after a run is meaningless — show the platform's real
+        # record count in the database instead.
+        if platform == "yellowpages":
+            final_total = db.get_stats().get(platform, {}).get("total", new_count)
+        else:
+            final_total = limit
+        scrape_status[platform].update(status="done", progress=new_count, total=final_total)
         print(f"[{platform}] done: {new_count} new | {skipped} skipped")
 
     except ScrapeCancelled:
