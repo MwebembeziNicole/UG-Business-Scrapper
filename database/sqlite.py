@@ -198,8 +198,34 @@ def insert_business(platform: str, business: dict) -> bool:
             if c.fetchone():
                 return False
         if source_url:
-            c.execute(f"SELECT 1 FROM {platform}_businesses WHERE source_url = ?", (source_url,))
-            if c.fetchone():
+            c.execute(
+                f"SELECT id, phone, email, website FROM {platform}_businesses WHERE source_url = ?",
+                (source_url,),
+            )
+            existing = c.fetchone()
+            if existing:
+                # Already known. Directory sites (e.g. Yellow Pages) are re-crawled
+                # in full on every run, so this is the common case, not an error.
+                # If this pass extracted a phone/email/website the stored row is
+                # still missing (e.g. a regex was added after the row was first
+                # captured), backfill just those blank fields instead of silently
+                # dropping the new data. Still counts as a duplicate (caller keeps
+                # tallying it as "skipped", not "new").
+                ex_id, ex_phone, ex_email, ex_website = existing
+                updates, params = [], []
+                if phone and not ex_phone:
+                    updates.append("phone = ?"); params.append(phone)
+                if email and not ex_email:
+                    updates.append("email = ?"); params.append(email)
+                if website and not ex_website:
+                    updates.append("website = ?"); params.append(website)
+                if updates:
+                    params.append(ex_id)
+                    c.execute(
+                        f"UPDATE {platform}_businesses SET {', '.join(updates)} WHERE id = ?",
+                        params,
+                    )
+                    conn.commit()
                 return False
 
         c.execute(f"""
