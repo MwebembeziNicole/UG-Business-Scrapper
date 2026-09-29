@@ -202,9 +202,15 @@ def _run_scrape(platform: str):
     api_key = db.get_setting("firecrawl_api_key", "")
     limit   = int(db.get_setting("daily_limit", config.DAILY_LIMIT_DEFAULT))
 
-    # Yellow Pages reads the site directly over HTTP and does NOT use Firecrawl,
-    # so a missing/expired API key must not block it.
-    NO_KEY_PLATFORMS = {"yellowpages"}
+    # None of the live scrapers (Jiji, Instagram, Twitter/X, TikTok, Yellow Pages)
+    # use Firecrawl any more — they all drive a real, logged-in Chrome session
+    # directly against the site (see the module docstrings in scrapers/*.py).
+    # `api_key` is only kept as an unused legacy argument so this function's
+    # signature doesn't have to change. Gating a run on a Firecrawl key that
+    # nothing consumes was blocking Jiji/Instagram/Twitter/TikTok from running
+    # at all on installs without one configured — that's the bug, not a safety
+    # check, so every platform is exempt here.
+    NO_KEY_PLATFORMS = set(db.PLATFORMS)
 
     if not api_key and platform not in NO_KEY_PLATFORMS:
         scrape_status[platform]["status"] = "error"
@@ -307,10 +313,9 @@ def _run_all_platforms():
 def _run_jiji_discover():
     """Phase 1 for Jiji: search for listing URLs, save to queue."""
     global jiji_discover_status
+    # discover_jiji() drives Chrome + jiji.ug's own search directly — it does not
+    # use Firecrawl, so no key is required here (see scrapers/jiji.py docstring).
     api_key = db.get_setting("firecrawl_api_key", "")
-    if not api_key:
-        jiji_discover_status.update(status="error", error="Firecrawl API key not configured.")
-        return
 
     jiji_discover_status.update(status="running", progress=0, total=120, found=0, error=None)
 
@@ -381,10 +386,9 @@ def _run_jiji_scrape_queued():
 def _run_ig_discover():
     """Phase 1 for Instagram: search for profiles, save to queue."""
     global discover_status
+    # discover_instagram() drives Chrome + Google search directly — it does not
+    # use Firecrawl, so no key is required here (see scrapers/instagram.py docstring).
     api_key = db.get_setting("firecrawl_api_key", "")
-    if not api_key:
-        discover_status.update(status="error", error="Firecrawl API key not configured.")
-        return
 
     discover_status.update(status="running", progress=0, total=100, found=0, error=None)
 

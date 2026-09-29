@@ -78,13 +78,13 @@
   .btn-sm{padding:8px 14px;font-size:12.5px;}
   .btn:disabled{opacity:.5;cursor:not-allowed;}
 
-  /* ── Microinteractions: tactile buttons, subtle motion ──────────────────── */
-  .btn{transition:transform .19s cubic-bezier(.2,.7,.3,1), box-shadow .19s ease, background-color .19s ease, color .19s ease, border-color .19s ease, filter .19s ease;}
-  .btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,24,40,.10);filter:brightness(1.03);}
-  .btn:active:not(:disabled){transform:translateY(1px) scale(.98);box-shadow:0 1px 2px rgba(16,24,40,.08);transition-duration:.09s;filter:brightness(.99);}
-  .icon-btn{transition:transform .19s cubic-bezier(.2,.7,.3,1), background-color .19s ease, color .19s ease, box-shadow .19s ease;}
-  .icon-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,24,40,.10);}
-  .icon-btn:active{transform:translateY(1px) scale(.97);transition-duration:.09s;}
+  /* ── Microinteractions: light, quick, subtle — matches modern app feel ──── */
+  .btn{transition:transform .12s cubic-bezier(.2,.7,.3,1), box-shadow .12s ease, background-color .12s ease, color .12s ease, border-color .12s ease, filter .12s ease;}
+  .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 2px 6px rgba(16,24,40,.08);filter:brightness(1.015);}
+  .btn:active:not(:disabled){transform:translateY(1px) scale(.99);box-shadow:0 1px 2px rgba(16,24,40,.06);transition-duration:.07s;filter:brightness(.98);}
+  .icon-btn{transition:transform .12s cubic-bezier(.2,.7,.3,1), background-color .12s ease, color .12s ease, box-shadow .12s ease;}
+  .icon-btn:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(16,24,40,.08);}
+  .icon-btn:active{transform:translateY(1px) scale(.98);transition-duration:.07s;}
 
   /* Success (completed) state for any button — uses the app's existing green */
   .btn.is-done{background:var(--ok)!important;border-color:var(--ok)!important;color:#fff!important;filter:none;opacity:1;}
@@ -256,6 +256,7 @@
   body.dark .icon-btn{ color:var(--text-2); }
   body.dark .btn-outline{ color:var(--blue); }
   body.dark .sort-select{ background-color:var(--card); color:var(--text); }
+  body.dark .export-date-select{ color:#000; }
   body.dark thead th{ background:#101A2E; }
   body.dark tbody tr:hover{ background:rgba(255,255,255,.035); }
   body.dark .chip-login{ background:var(--card); border-color:#4A3F1E; color:var(--text); }

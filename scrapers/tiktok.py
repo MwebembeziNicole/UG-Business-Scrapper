@@ -30,7 +30,7 @@ from typing import List, Dict, Optional
 
 from selenium.webdriver.common.by import By
 
-from .browser import build_driver, phones_from_text
+from .browser import build_driver, phones_from_text, tiktok_logged_in
 from . import queries as Q
 
 logger = logging.getLogger(__name__)
@@ -158,9 +158,17 @@ def scrape_tiktok_profiles(api_key: str = "", queued: List[Dict] = None,
     logger.info("[TikTok/Scrape] %d queued, target %d", len(queued), target_count)
     results: List[Dict] = []
     seen_handles: set = set()
+    login_walls = 0
 
     driver = build_driver(PROFILE, headless=headless)
     try:
+        if not tiktok_logged_in(driver):
+            logger.error(
+                "[TikTok/Scrape] NOT logged in to TikTok in this profile. "
+                "Run `python login.py tiktok` (or use the dashboard's 'Sign in to "
+                "TikTok' button) first — some profile data is hidden while logged out."
+            )
+
         for item in queued:
             if len(results) >= target_count:
                 break
@@ -175,6 +183,11 @@ def scrape_tiktok_profiles(api_key: str = "", queued: List[Dict] = None,
             try:
                 driver.get(profile_url)
                 time.sleep(random.uniform(4.0, 6.0))
+
+                if "/login" in (driver.current_url or "").lower():
+                    login_walls += 1
+                    logger.warning("[TikTok/Scrape] %s -> redirected to login wall, skipping", handle)
+                    continue
 
                 name = (_text(driver, "[data-e2e='user-title']")
                         or _text(driver, "[data-e2e='user-subtitle']"))
@@ -219,7 +232,13 @@ def scrape_tiktok_profiles(api_key: str = "", queued: List[Dict] = None,
     finally:
         _quit(driver)
 
-    logger.info("[TikTok/Scrape] done — %d records", len(results))
+    if not results and login_walls:
+        logger.warning(
+            "[TikTok/Scrape] 0 records — %d/%d queued profiles hit a login wall. "
+            "The saved session has likely expired; re-run `python login.py tiktok`.",
+            login_walls, len(queued),
+        )
+    logger.info("[TikTok/Scrape] done — %d records (%d login walls)", len(results), login_walls)
     return results[:target_count]
 
 

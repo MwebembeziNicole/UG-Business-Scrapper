@@ -25,6 +25,10 @@ LOCATIONS = [
     "Kampala", "Ntinda", "Kololo", "Bugolobi", "Kiwatule", "Kyanja",
     "Mukono", "Entebbe", "Jinja", "Nakawa", "Najjera", "Naalya",
     "Wandegeya", "Muyenga", "Nsambya", "Kira", "Seeta", "Bukoto",
+    "Wakiso", "Mbarara", "Gulu", "Mbale", "Masaka", "Kikuubo",
+    "Bweyogerere", "Nansana", "Kireka", "Makindye", "Rubaga", "Kawempe",
+    "Namugongo", "Kyaliwajjala", "Kansanga", "Kabalagala", "Ggaba",
+    "Luzira", "Kajjansi", "Namanve", "Namasuba", "Zzana",
 ]
 
 # ── Broad business categories (search-friendly terms) ─────────────────────────
@@ -86,6 +90,31 @@ CATEGORIES = [
     # Media
     "media companies", "TV stations", "radio stations", "newspapers",
     "production companies", "advertising agencies", "publishing companies",
+    # Transport (boda/taxi/driving/car wash — distinct from freight/logistics above)
+    "boda boda services", "taxi services", "special hire taxis",
+    "driving schools", "car wash", "auto detailing",
+    # Plumbing / water / electrical
+    "plumbers", "plumbing services", "water tank suppliers", "borehole drilling",
+    "water pump suppliers", "electricians", "electrical shops",
+    # Events extras
+    "tent and chairs hire", "dj services", "sound and lighting hire",
+    "decoration services", "wedding planners",
+    # Beauty extras
+    "nail salons", "wig shops", "cosmetics shops", "skincare shops",
+    "makeup artists",
+    # Baby / children / books
+    "baby shops", "toy shops", "children's clothing shops",
+    "bookshops", "stationery shops", "office supplies shops",
+    # IT / cyber
+    "computer repair shops", "cyber cafes", "IT services", "phone repair shops",
+    # Cleaning / pest control
+    "cleaning services", "laundry services", "dry cleaners", "pest control services",
+    "fumigation services",
+    # Furniture / interior
+    "furniture shops", "interior design", "home decor shops", "carpentry workshops",
+    # Agriculture extras
+    "animal feeds suppliers", "agro-input dealers", "veterinary shops",
+    "farm equipment suppliers", "irrigation equipment",
 ]
 
 # ── Ready-made sector lead phrases (good for Google discovery) ─────────────────
@@ -146,6 +175,26 @@ CATEGORY_KEYWORDS = {
     "shoe": "Fashion", "tailor": "Fashion",
     "media": "Media", "radio": "Media", "tv": "Media",
     "newspaper": "Media", "advertising": "Advertising",
+    "boda": "Boda Boda / Taxi", "taxi": "Boda Boda / Taxi", "special hire": "Boda Boda / Taxi",
+    "driving school": "Driving School", "car wash": "Car Wash", "detailing": "Car Wash",
+    "plumb": "Plumbing", "water tank": "Water & Plumbing", "borehole": "Water & Plumbing",
+    "water pump": "Water & Plumbing", "electrician": "Electrical", "electrical": "Electrical",
+    "tent": "Events", "dj ": "Events", "sound and light": "Events",
+    "decoration": "Events", "wedding": "Events",
+    "nail": "Salon & Beauty", "wig": "Salon & Beauty", "cosmetic": "Salon & Beauty",
+    "skincare": "Salon & Beauty", "makeup artist": "Salon & Beauty",
+    "baby shop": "Baby & Kids", "toy": "Baby & Kids", "children's clothing": "Baby & Kids",
+    "bookshop": "Books & Stationery", "stationery": "Books & Stationery",
+    "office supplies": "Books & Stationery",
+    "computer repair": "Computers & IT", "cyber cafe": "Computers & IT",
+    "phone repair": "Phones & Accessories",
+    "cleaning service": "Cleaning & Laundry", "laundry": "Cleaning & Laundry",
+    "dry clean": "Cleaning & Laundry", "pest control": "Cleaning & Laundry",
+    "fumigation": "Cleaning & Laundry",
+    "furniture": "Furniture & Interior", "interior design": "Furniture & Interior",
+    "home decor": "Furniture & Interior", "carpentry": "Furniture & Interior",
+    "animal feed": "Agriculture", "agro-input": "Agriculture", "veterinary": "Agriculture",
+    "irrigation": "Agriculture",
 }
 
 

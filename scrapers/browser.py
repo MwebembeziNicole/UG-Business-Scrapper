@@ -211,6 +211,36 @@ def jiji_logged_in(driver) -> bool:
         return False
 
 
+def twitter_logged_in(driver) -> bool:
+    """Heuristic: are we logged into x.com in this profile? X redirects logged-out
+    visitors from the home timeline to /login (or shows a login wall), so landing
+    anywhere else with the compose/account UI present is a reliable signal."""
+    try:
+        driver.get("https://x.com/home")
+        time.sleep(4)
+        cur  = (driver.current_url or "").lower()
+        page = (driver.page_source or "").lower()
+        if "/login" in cur or "/i/flow/login" in cur:
+            return False
+        return 'data-testid="sidenav_account_switcher"' in page or 'aria-label="post"' in page
+    except Exception:
+        return False
+
+
+def tiktok_logged_in(driver) -> bool:
+    """Heuristic: are we logged into tiktok.com in this profile?"""
+    try:
+        driver.get("https://www.tiktok.com/foryou")
+        time.sleep(4)
+        page = (driver.page_source or "").lower()
+        cur  = (driver.current_url or "").lower()
+        if "/login" in cur:
+            return False
+        return "data-e2e=\"nav-upload\"" in page or "data-e2e=\"profile-icon\"" in page
+    except Exception:
+        return False
+
+
 # ── Phone / location / category helpers (shared) ──────────────────────────────
 
 # Ugandan numbers carry a 9-digit national number after +256 / 256 / 0.

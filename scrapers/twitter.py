@@ -31,7 +31,7 @@ from typing import List, Dict, Optional
 
 from selenium.webdriver.common.by import By
 
-from .browser import build_driver, phones_from_text
+from .browser import build_driver, phones_from_text, twitter_logged_in
 from . import queries as Q
 
 logger = logging.getLogger(__name__)
@@ -87,6 +87,8 @@ def discover_twitter(api_key: str = "", target_count: int = 100,
     found: List[Dict] = []
     seen: set = set()
     queries = Q.build_site_queries("x.com")
+    blocked_queries = 0
+    zero_result_queries = 0
 
     driver = build_driver(PROFILE, headless=headless)
     try:
@@ -95,9 +97,12 @@ def discover_twitter(api_key: str = "", target_count: int = 100,
                 break
             driver.get("https://www.google.com/search?q=" + quote_plus(query))
             time.sleep(random.uniform(2.5, 4.0))
-            _wait_out_google_block(driver, max_wait=180 if qi == 0 else 60)
+            still_blocked = _wait_out_google_block(driver, max_wait=180 if qi == 0 else 60)
+            if still_blocked:
+                blocked_queries += 1
 
             before = len(found)
+            links_seen = 0
             for a in driver.find_elements(By.TAG_NAME, "a"):
                 if len(found) >= target_count:
                     break
@@ -107,6 +112,7 @@ def discover_twitter(api_key: str = "", target_count: int = 100,
                     continue   # element went stale while reading results
                 if not href:
                     continue
+                links_seen += 1
                 href = _clean_google_url(href)
                 handle = _handle_from_url(href)
                 if not handle or handle.lower() in seen:
@@ -118,17 +124,45 @@ def discover_twitter(api_key: str = "", target_count: int = 100,
                 })
                 if progress_cb:
                     progress_cb(len(found), target_count)
-            logger.info("[Twitter/Discover] %s -> +%d (total %d)",
-                        query[:48], len(found) - before, len(found))
+            added = len(found) - before
+            if added == 0:
+                zero_result_queries += 1
+            logger.info("[Twitter/Discover] %s -> +%d (total %d, %d links seen on page)",
+                        query[:48], added, len(found), links_seen)
             time.sleep(random.uniform(1.5, 3.0))
     finally:
         _quit(driver)
 
+    if not found:
+        # Zero profiles is a common silent-failure mode — spell out the likely
+        # cause instead of just returning an empty list, so it shows up in logs.
+        if blocked_queries >= max(1, len(queries) // 2):
+            logger.warning(
+                "[Twitter/Discover] 0 profiles found — Google blocked/CAPTCHA'd "
+                "%d of %d searches. Run `python login.py twitter` in a visible "
+                "window and solve the CAPTCHA once, or try again later.",
+                blocked_queries, len(queries),
+            )
+        elif zero_result_queries == len(queries):
+            logger.warning(
+                "[Twitter/Discover] 0 profiles found — every query returned 0 "
+                "matching x.com/twitter.com links. Google search result markup "
+                "may have changed, or Google is filtering x.com results for this "
+                "session/region."
+            )
+        else:
+            logger.warning(
+                "[Twitter/Discover] 0 profiles found for an unclear reason — "
+                "check browser_profiles/twitter has a valid session and rerun "
+                "with headless=False to watch what the search results show."
+            )
     logger.info("[Twitter/Discover] done — %d profiles", len(found))
     return found[:target_count]
 
 
-def _wait_out_google_block(driver, max_wait: int = 60):
+def _wait_out_google_block(driver, max_wait: int = 60) -> bool:
+    """Wait for a Google CAPTCHA/'unusual traffic' block to clear. Returns True if
+    still blocked when max_wait is reached (used to explain 0-result runs)."""
     waited = 0
     while waited < max_wait:
         url = (driver.current_url or "").lower()
@@ -136,10 +170,14 @@ def _wait_out_google_block(driver, max_wait: int = 60):
         blocked = ("/sorry/" in url or "unusual traffic" in src
                    or "before you continue" in src or "are you a robot" in src)
         if not blocked:
-            return
+            return False
         logger.warning("[Twitter/Discover] Google check — solve it in the window… (%ds)", waited)
         time.sleep(5)
         waited += 5
+    # Loop exited on the time budget, not because the block cleared — re-check once.
+    url = (driver.current_url or "").lower()
+    src = (driver.page_source or "").lower()
+    return "/sorry/" in url or "unusual traffic" in src or "before you continue" in src or "are you a robot" in src
 
 
 # ── PHASE 2: scrape each profile on x.com ─────────────────────────────────────
@@ -167,9 +205,18 @@ def scrape_twitter_profiles(api_key: str = "", queued: List[Dict] = None,
     logger.info("[Twitter/Scrape] %d queued, target %d", len(queued), target_count)
     results: List[Dict] = []
     seen_handles: set = set()
+    login_walls = 0
 
     driver = build_driver(PROFILE, headless=headless)
     try:
+        if not twitter_logged_in(driver):
+            logger.error(
+                "[Twitter/Scrape] NOT logged in to X/Twitter in this profile. "
+                "Run `python login.py twitter` (or use the dashboard's 'Sign in to "
+                "Twitter/X' button) first — logged-out profile pages are heavily "
+                "gated and will return little or no data."
+            )
+
         for item in queued:
             if len(results) >= target_count:
                 break
@@ -182,6 +229,15 @@ def scrape_twitter_profiles(api_key: str = "", queued: List[Dict] = None,
             try:
                 driver.get(profile_url)
                 time.sleep(random.uniform(4.0, 6.0))
+
+                cur = (driver.current_url or "").lower()
+                if "/login" in cur or "/i/flow/login" in cur:
+                    login_walls += 1
+                    logger.warning("[Twitter/Scrape] %s -> redirected to login wall, skipping", handle)
+                    continue
+                if "suspended" in cur or "account/suspended" in cur:
+                    logger.info("[Twitter/Scrape] %s -> account suspended, skipping", handle)
+                    continue
 
                 name = _text(driver, "[data-testid='UserName']").split("\n")[0].strip()
                 bio  = _text(driver, "[data-testid='UserDescription']")
@@ -230,7 +286,13 @@ def scrape_twitter_profiles(api_key: str = "", queued: List[Dict] = None,
     finally:
         _quit(driver)
 
-    logger.info("[Twitter/Scrape] done — %d records", len(results))
+    if not results and login_walls:
+        logger.warning(
+            "[Twitter/Scrape] 0 records — %d/%d queued profiles hit a login wall. "
+            "The saved session has likely expired; re-run `python login.py twitter`.",
+            login_walls, len(queued),
+        )
+    logger.info("[Twitter/Scrape] done — %d records (%d login walls)", len(results), login_walls)
     return results[:target_count]
 
 
